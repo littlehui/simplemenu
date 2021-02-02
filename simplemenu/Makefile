@@ -2,10 +2,10 @@
 TARGET = simplemenu
 #PLATFORM = BITTBOY
 #PLATFORM = RG-300
-#PLATFORM = RG-350
+PLATFORM = RG-350
 #PLATFORM = RG-350-BETA
 #PLATFORM = NPG
-PLATFORM = PC
+#PLATFORM = PC
 
 # Compiler
 ifeq ($(PLATFORM), BITTBOY)
@@ -45,7 +45,7 @@ endif
 CFLAGS +=  -I.
 LDFLAGS = -Wl,--start-group $(LIBS) -Wl,--end-group -Wl,--as-needed -Wl,--gc-sections -flto
 
-DEBUG=NO
+DEBUG=YES
 
 ifeq ($(DEBUG), NO)
 	CFLAGS +=  -DDEBUG -g3

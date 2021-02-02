@@ -10,7 +10,7 @@ else
     var="retrofw"
 fi
 
-cd /home/bittboy/git/simplemenu/simplemenu/
+#cd /home/bittboy/git/simplemenu/simplemenu/
 
 if [ "$1" = "RG-350" ]; then
     make clean
@@ -26,7 +26,7 @@ elif [ "$1" = "RFW" ]; then
     make PLATFORM=RG-300
 fi
 
-cd /home/bittboy/git/invoker/invoker/
+#cd /home/bittboy/git/invoker/invoker/
 
 if [ "$1" = "RG-350" ]; then
     make clean
@@ -42,7 +42,7 @@ else
     make PLATFORM=RG-300
 fi
 
-cp invoker.dge /home/bittboy/git/simplemenu/simplemenu/output
+#cp invoker.dge /home/bittboy/git/simplemenu/simplemenu/output
 
 if [ "$1" = "RG-350" ] || [ "$1" = "PG2" ] || [ "$1" = "RG-350-BETA" ]; then
     var="gcw0"
@@ -52,7 +52,7 @@ if [ "$1" = "RFW" ]]; then
     var="retrofw"
 fi
 
-cd /home/bittboy/git/simplemenu/simplemenu/output
+#cd /home/bittboy/git/simplemenu/simplemenu/output
 
 cat>default.${var}.desktop<<EOF
 [Desktop Entry]
@@ -85,14 +85,14 @@ fi
 
 rm -f ${OPK_NAME} > log.txt
 mksquashfs ${FLIST} ${OPK_NAME} -all-root -no-xattrs -noappend -no-exports >> log.txt
-
+                                                                   
 if [ "$1" = 'RG-350' ] || [ "$1" = 'PG2' ] || [ "$1" = 'RG-350-BETA' ]; then
     cat default.gcw0.desktop >> log.txt
     rm -f default.gcw0.desktop >> log.txt
     while true; do
         read -p "Transfer?" yn
         case $yn in
-            [Yy]* ) scp SimpleMenu-${1}.opk od@10.1.1.2:/media/sdcard/apps/SimpleMenu-${1}.opk; break;;
+            [Yy]* ) scp SimpleMenu-${1}.opk root@10.1.1.2:/media/sdcard/apps/SimpleMenu-${1}.opk; break;;
             [Nn]* ) exit;;
             * ) echo "Please answer yes or no.";;
         esac

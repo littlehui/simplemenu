@@ -165,6 +165,7 @@ extern int systemYInCustom;
 extern int fontSizeCustom;
 extern int colorfulFullscreenMenu;
 extern int displaySectionGroupName;
+extern int romNameListWidthMultiple;
 
 /* STRUCTS */
 struct OPKDesktopFile {

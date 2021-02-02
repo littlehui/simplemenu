@@ -475,7 +475,7 @@ void drawShutDownScreen() {
 }
 
 void drawGameList() {
-	currentGameNameBeingDisplayed[0]=' ';
+    currentGameNameBeingDisplayed[0]=' ';
 	currentGameNameBeingDisplayed[1]='\0';
 	if (currentMode==0&&!fullscreenMode) {
 		int rgbColor[] = {menuSections[currentSectionNumber].bodyBackgroundColor[0],menuSections[currentSectionNumber].bodyBackgroundColor[1],menuSections[currentSectionNumber].bodyBackgroundColor[2]};
@@ -546,7 +546,7 @@ void drawGameList() {
 				free(temp1);
 			}
 		} else {
-			nameWithoutExtension=malloc(strlen(rom->name)+1);
+		    nameWithoutExtension=malloc(strlen(rom->name)+1);
 			strcpy(nameWithoutExtension,rom->name);
 			if(stripGames) {
 				char* temp1 = strdup(nameWithoutExtension);
@@ -597,7 +597,8 @@ void drawGameList() {
 					}
 				} else {
 					if(currentMode==1) {
-						int screenDivisions=(SCREEN_RATIO*5)/1.33;
+
+					    int screenDivisions=(SCREEN_RATIO*5)/1.33;
 						int romListWidth=SCREEN_WIDTH-(SCREEN_WIDTH/screenDivisions)*2-calculateProportionalSizeOrDistance(2);
 						MAGIC_NUMBER = romListWidth;
 						drawNonShadedGameNameOnScreenCenter(buf, nextLine);

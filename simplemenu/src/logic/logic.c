@@ -322,7 +322,7 @@ void executeCommandPC (char *executable, char *fileToBeExecutedWithFullPath) {
 	enableKeyRepeat();
 	initializeFonts();
 	initializeSettingsFonts();
-	#endif
+#endif
 }
 
 int isExtensionValid(char *extension, char *fileExtensions) {

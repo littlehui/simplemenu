@@ -73,8 +73,10 @@ int genericDrawTextOnScreen(TTF_Font *font, int x, int y, char *buf, int txtColo
 	strcpy(bufCopy,buf);
 
 	int len=strlen(buf);
-	int width = MAGIC_NUMBER;
-
+	if (romNameListWidthMultiple == NULL) {
+	    romNameListWidthMultiple = 1;
+	}
+	int width = MAGIC_NUMBER * romNameListWidthMultiple;
 	int retW = 1;
 
 	TTF_SizeText(font, (const char *) buf, &retW, NULL);
@@ -87,9 +89,9 @@ int genericDrawTextOnScreen(TTF_Font *font, int x, int y, char *buf, int txtColo
 		free(bufCopy1);
 	}
 	if (shaded) {
-		msg = TTF_RenderText_Shaded(font, bufCopy, make_color(txtColor[0], txtColor[1], txtColor[2]), make_color(backgroundColor[0], backgroundColor[1], backgroundColor[2]));
+		msg = TTF_RenderUTF8_Shaded(font, bufCopy, make_color(txtColor[0], txtColor[1], txtColor[2]), make_color(backgroundColor[0], backgroundColor[1], backgroundColor[2]));
 	} else {
-		msg = TTF_RenderText_Blended(font, bufCopy, make_color(txtColor[0], txtColor[1], txtColor[2]));
+		msg = TTF_RenderUTF8_Blended(font, bufCopy, make_color(txtColor[0], txtColor[1], txtColor[2]));
 	}
 	if (align & HAlignCenter) {
 		x -= msg->w / 2;
@@ -140,14 +142,14 @@ void genericDrawMultiLineTextOnScreen(TTF_Font *font, int x, int y, char *buf, i
 			if (printCounter>0) {
 				SDL_FreeSurface(msg);
 			}
-			msg = TTF_RenderText_Blended(font, test, make_color(txtColor[0], txtColor[1], txtColor[2]));
+			msg = TTF_RenderUTF8_Blended(font, test, make_color(txtColor[0], txtColor[1], txtColor[2]));
 			while (msg->w<=maxWidth&&printCounter<wordCounter) {
 				printCounter++;
 				if (strcmp(wordsInBuf[printCounter],"-")!=0) {
 					strcat(test," ");
 					strcat(test,wordsInBuf[printCounter]);
 					SDL_FreeSurface(msg);
-					msg = TTF_RenderText_Blended(font, test, make_color(txtColor[0], txtColor[1], txtColor[2]));
+					msg = TTF_RenderUTF8_Blended(font, test, make_color(txtColor[0], txtColor[1], txtColor[2]));
 				} else {
 					printCounter++;
 					break;
@@ -175,7 +177,7 @@ void genericDrawMultiLineTextOnScreen(TTF_Font *font, int x, int y, char *buf, i
 		}
 
 	} else {
-		msg = TTF_RenderText_Blended(font, buf, make_color(txtColor[0], txtColor[1], txtColor[2]));
+		msg = TTF_RenderUTF8_Blended(font, buf, make_color(txtColor[0], txtColor[1], txtColor[2]));
 		genericDrawTextOnScreen(font,x,y,buf,txtColor,align,NULL,0);
 		free(wordsInBuf[0]);
 		SDL_FreeSurface(msg);
@@ -215,7 +217,7 @@ void drawCustomText1OnScreen(TTF_Font *font, int x, int y, const char buf[300], 
 	strcpy(bufCopy,buf);
 	strcpy(bufCopy1,buf);
 	bufCopy1[1]='\0';
-	msg = TTF_RenderText_Blended(font, bufCopy, make_color(txtColor[0], txtColor[1], txtColor[2]));
+	msg = TTF_RenderUTF8_Blended(font, bufCopy, make_color(txtColor[0], txtColor[1], txtColor[2]));
 	if (align & HAlignCenter) {
 		x -= msg->w / 2;
 	} else if (align & HAlignRight) {
@@ -1161,7 +1163,7 @@ void initializeDisplay() {
 	screen = SDL_SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, 16, SDL_SWSURFACE | SDL_NOFRAME);
 	#endif
 	TTF_Init();
-	MAGIC_NUMBER = SCREEN_WIDTH-calculateProportionalSizeOrDistance(2);
+    MAGIC_NUMBER = SCREEN_WIDTH-calculateProportionalSizeOrDistance(2);
 }
 
 
@@ -1220,17 +1222,18 @@ void freeSettingsFonts() {
 }
 
 void freeResources() {
-	freeFonts();
-	freeSettingsFonts();
-	TTF_Quit();
-	#if defined TARGET_RG350 || defined TARGET_RG350_BETA
+    freeFonts();
+    freeSettingsFonts();
+    TTF_Quit();
+#if defined TARGET_RG350 || defined TARGET_RG350_BETA
 	Shake_Stop(device, effect_id);
 	Shake_EraseEffect(device, effect_id);
 	Shake_Close(device);
 	Shake_Quit();
-	#endif
+#endif
 	#ifndef TARGET_PC
 	closeLogFile();
-	#endif
+#endif
 	SDL_Quit();
+
 }

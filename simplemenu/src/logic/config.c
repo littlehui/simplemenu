@@ -200,11 +200,19 @@ void loadTheme(char *theme) {
 		setThemeResourceValueInSection (themeConfig, menuSections[i].sectionName, "logo", menuSections[i].systemLogo);
 		setThemeResourceValueInSection (themeConfig, menuSections[i].sectionName, "background", menuSections[i].background);
 
-		value = ini_get(themeConfig, "GENERAL", "system_w_in_custom");
+		//*2
+        value = ini_get(themeConfig, "GENERAL", "system_w_in_custom");
+
+
+        value = ini_get(themeConfig, "GENERAL", "system_w_in_custom");
 		systemWidthInCustom = atoifgl(value);
 
 		value = ini_get(themeConfig, "GENERAL", "system_h_in_custom");
 		systemHeightInCustom = atoifgl(value);
+
+        value = ini_get(themeConfig, "GENERAL", "rom_name_w_multiple");
+        romNameListWidthMultiple = atoifgl(value);
+        romNameListWidthMultiple = romNameListWidthMultiple == 0 ? 1 : romNameListWidthMultiple;
 
 		if (menuSections[i].systemLogoSurface!=NULL) {
 			logMessage("INFO","loadTheme - Freeing system logo");
@@ -868,7 +876,12 @@ int loadSections(char *file) {
 		systemWidthInCustom = atoifgl(value);
 
 		value = ini_get(themeConfig, "GENERAL", "system_h_in_custom");
-		systemHeightInCustom = atoifgl(value);
+
+        systemHeightInCustom = atoifgl(value);
+
+        value = ini_get(themeConfig, "GENERAL", "rom_name_w_multiple");
+        romNameListWidthMultiple = atoifgl(value);
+        romNameListWidthMultiple = romNameListWidthMultiple == 0 ? 1 : romNameListWidthMultiple;
 
 		if (menuSectionCounter==currentSectionNumber) {
 			logMessage("INFO","load sections - Loading system logo");

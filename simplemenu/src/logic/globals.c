@@ -165,6 +165,7 @@ typedef struct thread_picture {
  int fontSizeCustom;
  int colorfulFullscreenMenu;
  int displaySectionGroupName;
+ int romNameListWidthMultiple;
 
 /* STRUCTS */
 struct OPKDesktopFile {

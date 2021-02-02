@@ -32,7 +32,7 @@ void logMessage(const char* tag, const char* message) {
 }
 
 void closeLogFile() {
-	if (fp!=NULL) {
+	if (fp != NULL) {
 		fclose(fp);
 	}
 }
