@@ -1,3 +1,13 @@
+#include <pthread.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <SDL/SDL_events.h>
+#include <SDL/SDL_joystick.h>
+#include <SDL/SDL_timer.h>
+#include <unistd.h>
+
+#include "../headers/string_utils.h"
+
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
@@ -8,7 +18,7 @@
 #include <SDL/SDL_video.h>
 #include "../headers/screen.h"
 
-#if defined TARGET_RG350 || defined TARGET_RG350_BETA
+#if defined TARGET_OD || defined TARGET_OD_BETA
 #include <shake.h>
 #endif
 
@@ -20,7 +30,6 @@
 #include "../headers/globals.h"
 #include "../headers/utils.h"
 
-SDL_Surface *screen = NULL;
 TTF_Font *font = NULL;
 TTF_Font *miniFont = NULL;
 TTF_Font *picModeFont = NULL;
@@ -29,24 +38,25 @@ TTF_Font *headerFont = NULL;
 TTF_Font *customCountFont = NULL;
 TTF_Font *footerFont = NULL;
 
+TTF_Font *outlineFont = NULL;
+TTF_Font *outlineMiniFont = NULL;
+TTF_Font *outlineHeaderFont = NULL;
+TTF_Font *outlineCustomCountFont = NULL;
+TTF_Font *outlineFooterFont = NULL;
+
+
 TTF_Font *settingsfont = NULL;
 TTF_Font *settingsHeaderFont = NULL;
 TTF_Font *settingsFooterFont = NULL;
 TTF_Font *settingsStatusFont = NULL;
 
 TTF_Font *customHeaderFont = NULL;
+TTF_Font *outlineCustomHeaderFont = NULL;
 
-void *updateClock(void *x_void_ptr) {
-	int brighterAmber[3]= {243,197,31};
-	int darkerAmber[3]={150,102,15};
-	char clock[20];
-	char batt[20];
-	int flag = 0;
-//	snprintf(batt,sizeof(batt), "%d%%", lastChargeLevel);
-	while (1) {
-
-	}
-	return NULL;
+TTF_Font *getBigFont() {
+	char *akashi = "resources/akashi.ttf";
+	BIGFont = TTF_OpenFont(akashi, calculateProportionalSizeOrDistance(14+18));
+	return BIGFont;
 }
 
 SDL_Color make_color(Uint8 r, Uint8 g, Uint8 b) {
@@ -66,9 +76,9 @@ int calculateProportionalSizeOrDistance(int number) {
 	}
 }
 
-int genericDrawTextOnScreen(TTF_Font *font, int x, int y, char *buf, int txtColor[], int align, int backgroundColor[], int shaded) {
-
+int genericDrawTextOnScreen(TTF_Font *font, TTF_Font *outline, int x, int y, char *buf, int txtColor[], int align, int backgroundColor[], int shaded) {
 	SDL_Surface *msg;
+	SDL_Surface *msg1 = malloc(sizeof(msg));
 	char *bufCopy=malloc(strlen(buf)+1);
 	strcpy(bufCopy,buf);
 
@@ -86,36 +96,53 @@ int genericDrawTextOnScreen(TTF_Font *font, int x, int y, char *buf, int txtColo
 		TTF_SizeText(font, (const char *) bufCopy1, &retW, NULL);
 		free(bufCopy1);
 	}
+
 	if (shaded) {
-		msg = TTF_RenderText_Shaded(font, bufCopy, make_color(txtColor[0], txtColor[1], txtColor[2]), make_color(backgroundColor[0], backgroundColor[1], backgroundColor[2]));
+		if (currentState==BROWSING_GAME_LIST  && outline != NULL && fontOutline > 0) {
+			msg1 = TTF_RenderText_Shaded(outline, bufCopy, make_color(50,50,50), make_color(backgroundColor[0], backgroundColor[1], backgroundColor[2]));
+			msg = TTF_RenderText_Solid(font, bufCopy, make_color(txtColor[0], txtColor[1], txtColor[2]));
+		} else {
+			msg = TTF_RenderText_Shaded(font, bufCopy, make_color(txtColor[0], txtColor[1], txtColor[2]), make_color(backgroundColor[0], backgroundColor[1], backgroundColor[2]));
+		}
 	} else {
-		msg = TTF_RenderText_Blended(font, bufCopy, make_color(txtColor[0], txtColor[1], txtColor[2]));
+		if (currentState==BROWSING_GAME_LIST && outline != NULL && fontOutline > 0) {
+			msg1 = TTF_RenderText_Blended(outline, bufCopy, make_color(50, 50, 50));
+			msg = TTF_RenderText_Solid(font, bufCopy, make_color(txtColor[0], txtColor[1], txtColor[2]));
+		} else {
+			msg = TTF_RenderText_Blended(font, bufCopy, make_color(txtColor[0], txtColor[1], txtColor[2]));
+		}
 	}
+
 	if (align & HAlignCenter) {
 		x -= msg->w / 2;
 	} else if (align & HAlignRight) {
 		x -= msg->w;
 	}
-
 	if (align & VAlignMiddle) {
 		y -= msg->h / 2;
 	} else if (align & VAlignTop) {
 		y -= msg->h;
 	}
-
 	SDL_Rect rect2;
 	rect2.x = x;
 	rect2.y = y;
 	rect2.w = msg->w;
 	rect2.h = msg->h;
-	SDL_BlitSurface(msg, NULL, screen, &rect2);
 
+	if(currentState==BROWSING_GAME_LIST && outline != NULL && fontOutline > 0) {
+		SDL_Rect rect = {fontOutline, fontOutline, msg1->w, msg1->h};
+		SDL_BlitSurface(msg, NULL, msg1, &rect);
+		SDL_BlitSurface(msg1, NULL, screen, &rect2);
+		SDL_FreeSurface(msg1);
+	} else {
+		SDL_BlitSurface(msg, NULL, screen, &rect2);
+	}
 	SDL_FreeSurface(msg);
 	free(bufCopy);
 	return 1;
 }
 
-void genericDrawMultiLineTextOnScreen(TTF_Font *font, int x, int y, char *buf, int txtColor[], int align, int maxWidth, int lineSeparation) {
+void genericDrawMultiLineTextOnScreen(TTF_Font *font, TTF_Font *outline, int x, int y, char *buf, int txtColor[], int align, int maxWidth, int lineSeparation) {
 	SDL_Surface *msg;
 	char *bufCopy;
 	char *wordsInBuf[500];
@@ -159,14 +186,14 @@ void genericDrawMultiLineTextOnScreen(TTF_Font *font, int x, int y, char *buf, i
 			int h = 0;
 			int w = 0;
 			TTF_SizeText(miniFont, test, &w, &h);
-			genericDrawTextOnScreen(font,x,y,test,txtColor,align,NULL,0);
+			genericDrawTextOnScreen(font,outline,x,y,test,txtColor,align,NULL,0);
 			free(test);
 			y+=calculateProportionalSizeOrDistance(lineSeparation);
 		}
 		if (printCounter==wordCounter) {
 			y-=calculateProportionalSizeOrDistance(lineSeparation);
 			if (msg->w>maxWidth) {
-				genericDrawTextOnScreen(font,x,y+calculateProportionalSizeOrDistance(lineSeparation),wordsInBuf[printCounter],txtColor,align,NULL,0);
+				genericDrawTextOnScreen(font,outline,x,y+calculateProportionalSizeOrDistance(lineSeparation),wordsInBuf[printCounter],txtColor,align,NULL,0);
 			}
 		}
 		SDL_FreeSurface(msg);
@@ -176,46 +203,49 @@ void genericDrawMultiLineTextOnScreen(TTF_Font *font, int x, int y, char *buf, i
 
 	} else {
 		msg = TTF_RenderText_Blended(font, buf, make_color(txtColor[0], txtColor[1], txtColor[2]));
-		genericDrawTextOnScreen(font,x,y,buf,txtColor,align,NULL,0);
+		genericDrawTextOnScreen(font,outline,x,y,buf,txtColor,align,NULL,0);
 		free(wordsInBuf[0]);
 		SDL_FreeSurface(msg);
 	}
 }
 
-int drawShadedTextOnScreen(TTF_Font *font, int x, int y, char *buf, int txtColor[], int align, int backgroundColor[]) {
-	return genericDrawTextOnScreen(font, x, y, buf, txtColor, align, backgroundColor, 1);
+int drawShadedTextOnScreen(TTF_Font *font, TTF_Font *outline, int x, int y, char *buf, int txtColor[], int align, int backgroundColor[]) {
+	return genericDrawTextOnScreen(font, outline, x, y, buf, txtColor, align, backgroundColor, 1);
 }
 
-int drawTextOnScreen(TTF_Font *pfont, int x, int y, char *buf, int txtColor[], int align) {
+int drawTextOnScreen(TTF_Font *pfont, TTF_Font *outline, int x, int y, char *buf, int txtColor[], int align) {
 	if (pfont==NULL) {
 		initializeFonts();
 		pfont = font;
 	}
-	return genericDrawTextOnScreen(pfont, x, y, buf, txtColor, align, NULL, 0);
+	return genericDrawTextOnScreen(pfont, outline, x, y, buf, txtColor, align, NULL, 0);
 }
 
 void drawCustomGameNameUnderPictureOnScreen(char *buf, int x, int y, int maxWidth) {
-	genericDrawMultiLineTextOnScreen(miniFont, x, y, buf, CURRENT_SECTION.bodyTextColor, VAlignBottom|HAlignCenter, maxWidth, artTextLineSeparationInCustom);
+	genericDrawMultiLineTextOnScreen(miniFont, outlineMiniFont, x, y, buf, CURRENT_SECTION.pictureTextColor, VAlignBottom|HAlignCenter, maxWidth, artTextLineSeparation);
 }
 
 void drawCustomGameNumber(char *buf, int x, int y) {
 	int hAlign = HAlignLeft;
-	if(text2AlignmentInCustom==1) {
+	if(text2Alignment==1) {
 		hAlign = HAlignCenter;
-	} else if (text2AlignmentInCustom==2) {
+	} else if (text2Alignment==2) {
 		hAlign = HAlignRight;
 	}
-	genericDrawTextOnScreen(customCountFont, x, y, buf, CURRENT_SECTION.headerAndFooterTextColor, VAlignMiddle|hAlign, CURRENT_SECTION.headerAndFooterBackgroundColor, 0);
+	genericDrawTextOnScreen(customCountFont, outlineCustomCountFont, x, y, buf, CURRENT_SECTION.fullscreenMenuItemsColor, VAlignMiddle|hAlign, CURRENT_SECTION.fullScreenMenuBackgroundColor, 0);
 }
 
-void drawCustomText1OnScreen(TTF_Font *font, int x, int y, const char buf[300], int txtColor[], int align){
+void drawCustomText1OnScreen(TTF_Font *font, TTF_Font *outline, int x, int y, const char buf[300], int txtColor[], int align){
 	SDL_Surface *msg;
+	SDL_Surface *msg1;
+
 	char *bufCopy=malloc(300);
 	char *bufCopy1=malloc(300);
 	strcpy(bufCopy,buf);
 	strcpy(bufCopy1,buf);
 	bufCopy1[1]='\0';
 	msg = TTF_RenderText_Blended(font, bufCopy, make_color(txtColor[0], txtColor[1], txtColor[2]));
+	msg1 = TTF_RenderText_Blended(outline, bufCopy, make_color(50,50,50));
 	if (align & HAlignCenter) {
 		x -= msg->w / 2;
 	} else if (align & HAlignRight) {
@@ -227,22 +257,43 @@ void drawCustomText1OnScreen(TTF_Font *font, int x, int y, const char buf[300], 
 	} else if (align & VAlignTop) {
 		y -= msg->h;
 	}
-	SDL_Rect rect;
-	rect.x = x;
-	rect.y = y;
-	rect.w = msg->w;
-	rect.h = msg->h;
-	SDL_BlitSurface(msg, NULL, screen, &rect);
+	SDL_Rect rect2;
+	rect2.x = x;
+	rect2.y = y+120;
+	rect2.w = msg->w;
+	rect2.h = msg->h;
+
+	SDL_Rect rect = {1, 1, msg1->w, msg1->h};
+	SDL_BlitSurface(msg, NULL, msg1, &rect);
+	SDL_BlitSurface(msg1, NULL, screen, &rect2);
+	SDL_FreeSurface(msg1);
+
 	SDL_FreeSurface(msg);
 	free(bufCopy);
 }
 
-void drawShadedSettingsOptionOnScreen(char *buf, int position, int txtColor[], int txtBackgroundColor[]) {
-	drawShadedTextOnScreen(settingsfont, SCREEN_WIDTH/2, position, buf, txtColor, VAlignBottom | HAlignCenter, txtBackgroundColor);
+void drawShadedSettingsOptionValueOnScreen(char *option, char *value, int position, int txtColor[], int txtBackgroundColor[]) {
+	int retW=1;
+	int retW2=1;
+	int retW3=3;
+	TTF_SizeText(settingsfont, (const char *) option, &retW, NULL);
+	TTF_SizeText(settingsfont, (const char *) " ", &retW2, NULL);
+	TTF_SizeText(settingsfont, (const char *) value, &retW3, NULL);
+	drawShadedTextOnScreen(settingsfont, NULL, SCREEN_WIDTH-calculateProportionalSizeOrDistance(5)-retW3, position, value, txtColor, VAlignBottom | HAlignLeft, txtBackgroundColor);
+}
+
+void drawSettingsOptionValueOnScreen(char *option, char *value, int position, int txtColor[]) {
+	int retW=1;
+	int retW2=1;
+	int retW3=3;
+	TTF_SizeText(settingsfont, (const char *) option, &retW, NULL);
+	TTF_SizeText(settingsfont, (const char *) " ", &retW2, NULL);
+	TTF_SizeText(settingsfont, (const char *) value, &retW3, NULL);
+	drawTextOnScreen(settingsfont, NULL, SCREEN_WIDTH-calculateProportionalSizeOrDistance(5)-retW3, position, value, txtColor, VAlignBottom | HAlignLeft);
 }
 
 void drawNonShadedSettingsOptionOnScreen(char *buf, int position, int txtColor[]) {
-	drawTextOnScreen(settingsfont, SCREEN_WIDTH/2, position, buf, txtColor, VAlignBottom | HAlignCenter);
+	drawTextOnScreen(settingsfont, NULL, calculateProportionalSizeOrDistance(5), position, buf, txtColor, VAlignBottom | HAlignLeft);
 }
 
 void drawShadedGameNameOnScreen(char *buf, int position) {
@@ -256,7 +307,7 @@ void drawShadedGameNameOnScreen(char *buf, int position) {
 	} else {
 		strcpy(temp,buf);
 	}
-	drawShadedTextOnScreen(font, SCREEN_WIDTH/2, position, temp, menuSections[currentSectionNumber].bodySelectedTextTextColor, VAlignBottom | HAlignCenter, menuSections[currentSectionNumber].bodySelectedTextBackgroundColor);
+	drawShadedTextOnScreen(font, outlineFont, SCREEN_WIDTH/2, position, temp, menuSections[currentSectionNumber].bodySelectedTextTextColor, VAlignBottom | HAlignCenter, menuSections[currentSectionNumber].bodySelectedTextBackgroundColor);
 	free(temp);
 }
 
@@ -271,12 +322,12 @@ void drawShadedGameNameOnScreenLeft(char *buf, int position) {
 	} else {
 		strcpy(temp,buf);
 	}
-	drawShadedTextOnScreen(font, calculateProportionalSizeOrDistance(3), position, temp, menuSections[currentSectionNumber].bodySelectedTextTextColor, VAlignBottom | HAlignLeft, menuSections[currentSectionNumber].bodySelectedTextBackgroundColor);
+	drawShadedTextOnScreen(font, outlineFont, calculateProportionalSizeOrDistance(3), position, temp, menuSections[currentSectionNumber].bodySelectedTextTextColor, VAlignBottom | HAlignLeft, menuSections[currentSectionNumber].bodySelectedTextBackgroundColor);
 	free(temp);
 }
 
 void drawNonShadedGameNameOnScreenLeft(char *buf, int position) {
-	drawTextOnScreen(font, calculateProportionalSizeOrDistance(3), position, buf, menuSections[currentSectionNumber].bodyTextColor, VAlignBottom | HAlignLeft);
+	drawTextOnScreen(font, outlineFont, calculateProportionalSizeOrDistance(3), position, buf, menuSections[currentSectionNumber].menuItemsFontColor, VAlignBottom | HAlignLeft);
 }
 
 void drawShadedGameNameOnScreenCenter(char *buf, int position) {
@@ -292,14 +343,14 @@ void drawShadedGameNameOnScreenCenter(char *buf, int position) {
 	}
 	int screenDivisions=(SCREEN_RATIO*5)/1.33;
 	int centerRomList = (SCREEN_WIDTH-2*(SCREEN_WIDTH/screenDivisions))/2;
-	drawShadedTextOnScreen(font, centerRomList, position, temp, menuSections[currentSectionNumber].bodySelectedTextTextColor, VAlignBottom | HAlignCenter, menuSections[currentSectionNumber].bodySelectedTextBackgroundColor);
+	drawShadedTextOnScreen(font, outlineFont, centerRomList, position, temp, menuSections[currentSectionNumber].bodySelectedTextTextColor, VAlignBottom | HAlignCenter, menuSections[currentSectionNumber].bodySelectedTextBackgroundColor);
 	free(temp);
 }
 
 void drawNonShadedGameNameOnScreenCenter(char *buf, int position) {
 	int screenDivisions=(SCREEN_RATIO*5)/1.33;
 	int centerRomList = (SCREEN_WIDTH-2*(SCREEN_WIDTH/screenDivisions))/2;
-	drawTextOnScreen(font, centerRomList, position, buf, menuSections[currentSectionNumber].bodyTextColor, VAlignBottom | HAlignCenter);
+	drawTextOnScreen(font, outlineFont, centerRomList, position, buf, menuSections[currentSectionNumber].menuItemsFontColor, VAlignBottom | HAlignCenter);
 }
 
 void drawShadedGameNameOnScreenCustom(char *buf, int position){
@@ -314,33 +365,33 @@ void drawShadedGameNameOnScreenCustom(char *buf, int position){
 		strcpy(temp,buf);
 	}
 	int hAlign = 0;
-	if (gameListAlignmentInCustom==0) {
+	if (gameListAlignment==0) {
 		hAlign = HAlignLeft;
-	} else if (gameListAlignmentInCustom==1) {
+	} else if (gameListAlignment==1) {
 		hAlign = HAlignCenter;
 	} else {
 		hAlign = HAlignRight;
 	}
 	if (transparentShading) {
-		drawTextOnScreen(font, calculateProportionalSizeOrDistance(gameListXInCustom), position, temp, menuSections[currentSectionNumber].bodySelectedTextTextColor, VAlignBottom | hAlign);
+		drawTextOnScreen(font, outlineFont, calculateProportionalSizeOrDistance(gameListX), position, temp, menuSections[currentSectionNumber].bodySelectedTextTextColor, VAlignBottom | hAlign);
 	} else {
-		drawShadedTextOnScreen(font, calculateProportionalSizeOrDistance(gameListXInCustom), position, temp, menuSections[currentSectionNumber].bodySelectedTextTextColor, VAlignBottom | hAlign, menuSections[currentSectionNumber].bodySelectedTextBackgroundColor);
+		drawShadedTextOnScreen(font, outlineFont, calculateProportionalSizeOrDistance(gameListX), position, temp, menuSections[currentSectionNumber].bodySelectedTextTextColor, VAlignBottom | hAlign, menuSections[currentSectionNumber].bodySelectedTextBackgroundColor);
 	}
 	free(temp);
 }
 
 void drawNonShadedGameNameOnScreenCustom(char *buf, int position) {
-	if (gameListAlignmentInCustom == 0) {
-		drawTextOnScreen(font, calculateProportionalSizeOrDistance(gameListXInCustom), position, buf, menuSections[currentSectionNumber].bodyTextColor, VAlignBottom | HAlignLeft);
-	} else if (gameListAlignmentInCustom == 1) {
-		drawTextOnScreen(font, calculateProportionalSizeOrDistance(gameListXInCustom), position, buf, menuSections[currentSectionNumber].bodyTextColor, VAlignBottom | HAlignCenter);
+	if (gameListAlignment == 0) {
+		drawTextOnScreen(font, outlineFont, calculateProportionalSizeOrDistance(gameListX), position, buf, menuSections[currentSectionNumber].menuItemsFontColor, VAlignBottom | HAlignLeft);
+	} else if (gameListAlignment == 1) {
+		drawTextOnScreen(font, outlineFont, calculateProportionalSizeOrDistance(gameListX), position, buf, menuSections[currentSectionNumber].menuItemsFontColor, VAlignBottom | HAlignCenter);
 	} else {
-		drawTextOnScreen(font, calculateProportionalSizeOrDistance(gameListXInCustom), position, buf, menuSections[currentSectionNumber].bodyTextColor, VAlignBottom | HAlignRight);
+		drawTextOnScreen(font, outlineFont, calculateProportionalSizeOrDistance(gameListX), position, buf, menuSections[currentSectionNumber].menuItemsFontColor, VAlignBottom | HAlignRight);
 	}
 }
 
 void drawNonShadedGameNameOnScreen(char *buf, int position) {
-	drawTextOnScreen(font, SCREEN_WIDTH/2, position, buf, menuSections[currentSectionNumber].bodyTextColor, VAlignBottom | HAlignCenter);
+	drawTextOnScreen(font, outlineFont, SCREEN_WIDTH/2, position, buf, menuSections[currentSectionNumber].menuItemsFontColor, VAlignBottom | HAlignCenter);
 }
 
 void drawShadedGameNameOnScreenPicMode(char *buf, int position) {
@@ -354,8 +405,17 @@ void drawShadedGameNameOnScreenPicMode(char *buf, int position) {
 	} else {
 		strcpy(temp,buf);
 	}
-	int color[3] = {255,255,0};
-	drawTextOnScreen(font, calculateProportionalSizeOrDistance(5), position, temp, color, VAlignMiddle | HAlignLeft);
+	int color[3];
+//	if (colorfulFullscreenMenu) {
+//		color[0] = CURRENT_SECTION.fullscreenShadedMenuItemsColor[0];
+//		color[1] = CURRENT_SECTION.fullscreenShadedMenuItemsColor[1];
+//		color[2] = CURRENT_SECTION.fullscreenShadedMenuItemsColor[2];
+//	} else {
+		color[0] = 255;
+		color[1] = 255;
+		color[2] = 0;
+//	}
+	drawTextOnScreen(font, outlineFont, calculateProportionalSizeOrDistance(5), position, temp, color, VAlignMiddle | HAlignLeft);
 	TTF_SetFontStyle(font,TTF_STYLE_NORMAL);
 	free(temp);
 }
@@ -363,15 +423,15 @@ void drawShadedGameNameOnScreenPicMode(char *buf, int position) {
 void drawNonShadedGameNameOnScreenPicMode(char *buf, int position) {
 	int color[3];
 	if (colorfulFullscreenMenu) {
-		color[0] = CURRENT_SECTION.headerAndFooterTextColor[0];
-		color[1] = CURRENT_SECTION.headerAndFooterTextColor[1];
-		color[2] = CURRENT_SECTION.headerAndFooterTextColor[2];
+		color[0] = CURRENT_SECTION.fullscreenMenuItemsColor[0];
+		color[1] = CURRENT_SECTION.fullscreenMenuItemsColor[1];
+		color[2] = CURRENT_SECTION.fullscreenMenuItemsColor[2];
 	} else {
 		color[0] = 255;
 		color[1] = 255;
 		color[2] = 255;
 	}
-	drawTextOnScreen(font, calculateProportionalSizeOrDistance(5), position, buf, color, VAlignMiddle | HAlignLeft);
+	drawTextOnScreen(font, outlineFont, calculateProportionalSizeOrDistance(5), position, buf, color, VAlignMiddle | HAlignLeft);
 }
 
 void drawPictureTextOnScreen(char *buf) {
@@ -392,16 +452,16 @@ void drawPictureTextOnScreen(char *buf) {
 	}
 	if(!favoritesSectionSelected) {
 		if (colorfulFullscreenMenu) {
-			drawTransparentRectangleToScreen(SCREEN_WIDTH, h+calculateProportionalSizeOrDistance(2), 0, footerOnTop?0:SCREEN_HEIGHT-(h+calculateProportionalSizeOrDistance(2)), CURRENT_SECTION.headerAndFooterBackgroundColor, 180);
+			drawTransparentRectangleToScreen(SCREEN_WIDTH, h+calculateProportionalSizeOrDistance(2), 0, footerOnTop?0:SCREEN_HEIGHT-(h+calculateProportionalSizeOrDistance(2)), CURRENT_SECTION.fullScreenMenuBackgroundColor, 180);
 			drawTransparentRectangleToScreen(SCREEN_WIDTH, h+calculateProportionalSizeOrDistance(2), 0, footerOnTop?0:SCREEN_HEIGHT-(h+calculateProportionalSizeOrDistance(2)),(int[]){0,0,0}, 100);
-			drawTextOnScreen(font, SCREEN_WIDTH/2, footerOnTop?calculateProportionalSizeOrDistance(2):SCREEN_HEIGHT-h, temp, CURRENT_SECTION.headerAndFooterTextColor, footerOnTop?VAlignBottom|HAlignCenter:VAlignBottom|HAlignCenter);
+			drawTextOnScreen(font, NULL, SCREEN_WIDTH/2, footerOnTop?calculateProportionalSizeOrDistance(2):SCREEN_HEIGHT-h, temp, CURRENT_SECTION.fullscreenMenuItemsColor, footerOnTop?VAlignBottom|HAlignCenter:VAlignBottom|HAlignCenter);
 		} else {
 			drawTransparentRectangleToScreen(SCREEN_WIDTH, h+calculateProportionalSizeOrDistance(2), 0, footerOnTop?0:SCREEN_HEIGHT-(h+calculateProportionalSizeOrDistance(2)), (int[]){0,0,0}, 180);
-			drawTextOnScreen(font, SCREEN_WIDTH/2, footerOnTop?calculateProportionalSizeOrDistance(2):SCREEN_HEIGHT-h, temp, (int[]){255,255,255}, footerOnTop?VAlignBottom|HAlignCenter:VAlignBottom|HAlignCenter);
+			drawTextOnScreen(font, NULL, SCREEN_WIDTH/2, footerOnTop?calculateProportionalSizeOrDistance(2):SCREEN_HEIGHT-h, temp, (int[]){255,255,255}, footerOnTop?VAlignBottom|HAlignCenter:VAlignBottom|HAlignCenter);
 		}
 	} else {
 		drawTransparentRectangleToScreen(SCREEN_WIDTH, h+calculateProportionalSizeOrDistance(2), 0, footerOnTop?0:SCREEN_HEIGHT-(h+calculateProportionalSizeOrDistance(2)), (int[]){0,0,0}, 180);
-		drawTextOnScreen(font, SCREEN_WIDTH/2, footerOnTop?calculateProportionalSizeOrDistance(2):SCREEN_HEIGHT-h, temp, (int[]){255,255,0}, footerOnTop?VAlignBottom|HAlignCenter:VAlignBottom|HAlignCenter);
+		drawTextOnScreen(font, NULL, SCREEN_WIDTH/2, footerOnTop?calculateProportionalSizeOrDistance(2):SCREEN_HEIGHT-h, temp, (int[]){255,255,0}, footerOnTop?VAlignBottom|HAlignCenter:VAlignBottom|HAlignCenter);
 	}
 	free(temp);
 }
@@ -418,116 +478,91 @@ void drawImgFallbackTextOnScreen(char *fallBackText) {
 		} else {
 			strcpy(temp,fallBackText);
 		}
-		drawTextOnScreen(font, (SCREEN_WIDTH/2), calculateProportionalSizeOrDistance(120), temp, CURRENT_SECTION.bodyTextColor, VAlignMiddle | HAlignCenter);
+		drawTextOnScreen(font, NULL, (SCREEN_WIDTH/2), calculateProportionalSizeOrDistance(120), temp, CURRENT_SECTION.menuItemsFontColor, VAlignMiddle | HAlignCenter);
 		free(temp);
 	} else {
 		drawPictureTextOnScreen(fallBackText);
 	}
 }
 
-void drawTextOnFooter(char *text) {
-	switch (currentMode) {
-	case 0:
-		drawTextOnScreen(footerFont, SCREEN_WIDTH/2, calculateProportionalSizeOrDistance(footerPositionInSimple), text, menuSections[currentSectionNumber].headerAndFooterTextColor, VAlignMiddle | HAlignCenter);
-		break;
-	case 1:
-		drawTextOnScreen(footerFont, SCREEN_WIDTH/2, calculateProportionalSizeOrDistance(footerPositionInTraditional), text, menuSections[currentSectionNumber].headerAndFooterTextColor, VAlignMiddle | HAlignCenter);
-		break;
-	case 2:
-		drawTextOnScreen(footerFont, SCREEN_WIDTH/2, calculateProportionalSizeOrDistance(footerPositionInDrunkenMonkey), text, menuSections[currentSectionNumber].headerAndFooterTextColor, VAlignMiddle | HAlignCenter);
-		break;
-	}
-}
 
 void drawTextOnFooterWithColor(char *text, int txtColor[]) {
-	drawTextOnScreen(footerFont, SCREEN_WIDTH/2, SCREEN_HEIGHT-calculateProportionalSizeOrDistance(9), text, txtColor, VAlignMiddle| HAlignCenter);
+	drawTextOnScreen(footerFont, outlineFooterFont, SCREEN_WIDTH/2, SCREEN_HEIGHT-calculateProportionalSizeOrDistance(9), text, txtColor, VAlignMiddle| HAlignCenter);
 }
 
 void drawTextOnSettingsFooterWithColor(char *text, int txtColor[]) {
-	drawTextOnScreen(settingsFooterFont, SCREEN_WIDTH/2, calculateProportionalSizeOrDistance(footerPositionInSimple), text, txtColor, VAlignMiddle| HAlignCenter);
+	drawTextOnScreen(settingsStatusFont, NULL, calculateProportionalSizeOrDistance(5), calculateProportionalSizeOrDistance(231), text, txtColor, VAlignMiddle| HAlignLeft);
 }
 
-void drawTextOnHeader(char *text) {
+void drawTextOnHeader() {
 	int Halign = 0;
-	switch (currentMode) {
+	switch (text1Alignment) {
 	case 0:
-		drawTextOnScreen(headerFont, (SCREEN_WIDTH/2), calculateProportionalSizeOrDistance(headerPositionInSimple), text, menuSections[currentSectionNumber].headerAndFooterTextColor, VAlignMiddle | HAlignCenter);
+		Halign = HAlignLeft;
 		break;
 	case 1:
-		drawTextOnScreen(headerFont, (SCREEN_WIDTH/2), calculateProportionalSizeOrDistance(headerPositionInTraditional), text, menuSections[currentSectionNumber].headerAndFooterTextColor, VAlignMiddle | HAlignCenter);
+		Halign = HAlignCenter;
 		break;
 	case 2:
-		drawTextOnScreen(headerFont, (SCREEN_WIDTH/2), calculateProportionalSizeOrDistance(headerPositionInDrunkenMonkey), text, menuSections[currentSectionNumber].headerAndFooterTextColor, VAlignMiddle | HAlignCenter);
-		break;
-	case 3:
-		switch (text1AlignmentInCustom) {
-		case 0:
-			Halign = HAlignLeft;
-			break;
-		case 1:
-			Halign = HAlignCenter;
-			break;
-		case 2:
-			Halign = HAlignRight;
-			break;
-		}
-		drawCustomText1OnScreen(customHeaderFont, calculateProportionalSizeOrDistance(text1XInCustom), calculateProportionalSizeOrDistance(text1YInCustom), CURRENT_SECTION.sectionName, menuSections[currentSectionNumber].headerAndFooterTextColor, VAlignMiddle | Halign);
+		Halign = HAlignRight;
 		break;
 	}
+	genericDrawTextOnScreen(customHeaderFont, outlineCustomHeaderFont, calculateProportionalSizeOrDistance(text1X), calculateProportionalSizeOrDistance(text1Y), CURRENT_SECTION.sectionName, menuSections[currentSectionNumber].fullscreenMenuItemsColor, VAlignMiddle | Halign, CURRENT_SECTION.fullScreenMenuBackgroundColor, 0);
 }
 
 void drawTextOnHeaderWithColor(char *text, int txtColor[]) {
-	drawTextOnScreen(headerFont, (SCREEN_WIDTH/2), calculateProportionalSizeOrDistance(13), text, txtColor, VAlignMiddle | HAlignCenter);
+	drawTextOnScreen(headerFont, outlineHeaderFont, (SCREEN_WIDTH/2), calculateProportionalSizeOrDistance(13), text, txtColor, VAlignMiddle | HAlignCenter);
 }
 
 void drawTextOnSettingsHeaderWithColor(char *text, int txtColor[]) {
-	drawTextOnScreen(settingsHeaderFont, (SCREEN_WIDTH/2), calculateProportionalSizeOrDistance(headerPositionInSimple), text, txtColor, VAlignMiddle | HAlignCenter);
+	drawTextOnScreen(settingsStatusFont, NULL, (SCREEN_WIDTH/2), calculateProportionalSizeOrDistance(13), text, txtColor, VAlignMiddle | HAlignCenter);
 }
 
 void drawTextOnSettingsHeaderLeftWithColor(char *text, int txtColor[]) {
-	drawTextOnScreen(settingsStatusFont, 5, calculateProportionalSizeOrDistance(headerPositionInSimple), text, txtColor, VAlignMiddle | HAlignLeft);
+	drawTextOnScreen(settingsHeaderFont, NULL, calculateProportionalSizeOrDistance(5), calculateProportionalSizeOrDistance(24), text, txtColor, VAlignMiddle | HAlignLeft);
 }
 
 void drawTextOnSettingsHeaderRightWithColor(char *text, int txtColor[]) {
-	drawTextOnScreen(settingsStatusFont, SCREEN_WIDTH-calculateProportionalSizeOrDistance(5), calculateProportionalSizeOrDistance(headerPositionInSimple), text, txtColor, VAlignMiddle | HAlignRight);
+	drawTextOnScreen(settingsStatusFont, NULL, SCREEN_WIDTH-calculateProportionalSizeOrDistance(5), calculateProportionalSizeOrDistance(13), text, txtColor, VAlignMiddle | HAlignRight);
+}
+
+void drawTextOnSettingsHeaderRightWithColor1(char *text, int x, int txtColor[]) {
+	drawTextOnScreen(settingsStatusFont, NULL, x, calculateProportionalSizeOrDistance(33), text, txtColor, VAlignMiddle | HAlignRight);
 }
 
 void drawCurrentLetter(char *letter, int textColor[], int x, int y) {
-	if (!fullscreenMode) {
-		if (currentMode==0) {
-			drawTextOnScreen(BIGFont, x, y, letter, textColor, VAlignMiddle | HAlignCenter);
-		} else {
-			drawTextOnScreen(font, x, y, letter, textColor, VAlignMiddle | HAlignCenter);
-		}
-	} else {
-		drawTextOnScreen(font, x, y, letter, textColor, VAlignMiddle | HAlignCenter);
-	}
+	drawTextOnScreen(font, NULL, x, y, letter, textColor, VAlignMiddle | HAlignCenter);
 }
 
-void drawShutDownText(char *text) {
+void drawBigWhiteText(char *text) {
 	int white[3]={255, 255, 255};
-	drawTextOnScreen(BIGFont, SCREEN_WIDTH/2, SCREEN_HEIGHT/2, text, white, VAlignMiddle | HAlignCenter);
+	drawTextOnScreen(BIGFont, NULL, SCREEN_WIDTH/2, SCREEN_HEIGHT/2, text, white, VAlignMiddle | HAlignCenter);
+}
+
+void drawLoadingText() {
+	int white[3]={255, 255, 255};
+	drawTextOnScreen(settingsFooterFont, NULL, SCREEN_WIDTH-calculateProportionalSizeOrDistance(44), SCREEN_HEIGHT-calculateProportionalSizeOrDistance(8), "LOADING...", white, VAlignMiddle | HAlignCenter);
 }
 
 void drawTimeOnFooter(char *text) {
-	drawTextOnScreen(font,calculateProportionalSizeOrDistance(316), calculateProportionalSizeOrDistance(232), text, menuSections[currentSectionNumber].headerAndFooterTextColor, VAlignMiddle | HAlignRight);
+	drawTextOnScreen(font, NULL, calculateProportionalSizeOrDistance(316), calculateProportionalSizeOrDistance(232), text, menuSections[currentSectionNumber].fullscreenMenuItemsColor, VAlignMiddle | HAlignRight);
 }
 
 void drawBatteryOnFooter(char *text) {
-	drawTextOnScreen(font,calculateProportionalSizeOrDistance(4), calculateProportionalSizeOrDistance(232), text, menuSections[currentSectionNumber].headerAndFooterTextColor, VAlignMiddle | HAlignLeft);
+	drawTextOnScreen(font, NULL, calculateProportionalSizeOrDistance(4), calculateProportionalSizeOrDistance(232), text, menuSections[currentSectionNumber].fullscreenMenuItemsColor, VAlignMiddle | HAlignLeft);
 }
 
 void drawCurrentExecutable(char *executable, int textColor[]) {
-	drawTextOnScreen(footerFont, (SCREEN_WIDTH/2), (SCREEN_HEIGHT/2)+calculateProportionalSizeOrDistance(3), executable, textColor, VAlignMiddle | HAlignCenter);
+	drawTextOnScreen(footerFont, NULL, (SCREEN_WIDTH/2), (SCREEN_HEIGHT/2)+calculateProportionalSizeOrDistance(3), executable, textColor, VAlignMiddle | HAlignCenter);
 }
 
 void drawCurrentSectionGroup(char *groupName, int textColor[]) {
-	drawTextOnScreen(BIGFont, (SCREEN_WIDTH/2), (SCREEN_HEIGHT/2), groupName, textColor, VAlignMiddle | HAlignCenter);
+	drawTextOnScreen(BIGFont, NULL, (SCREEN_WIDTH/2), (SCREEN_HEIGHT/2), groupName, textColor, VAlignMiddle | HAlignCenter);
 }
 
 void drawError(char *errorMessage, int textColor[]) {
 	if(strchr(errorMessage,'-')==NULL) {
-		drawTextOnScreen(footerFont, (SCREEN_WIDTH/2), (SCREEN_HEIGHT/2)+calculateProportionalSizeOrDistance(3), errorMessage, textColor, VAlignMiddle | HAlignCenter);
+		drawTextOnScreen(settingsfont, NULL, (SCREEN_WIDTH/2), (SCREEN_HEIGHT/2)+calculateProportionalSizeOrDistance(3), errorMessage, textColor, VAlignMiddle | HAlignCenter);
 	} else {
 		char *line2 = strchr(errorMessage,'-');
 		int index = (line2-errorMessage);
@@ -535,17 +570,21 @@ void drawError(char *errorMessage, int textColor[]) {
 		char line1[200];
 		strcpy(line1, errorMessage);
 		line1[index]='\0';
-		drawTextOnScreen(footerFont, (SCREEN_WIDTH/2), (SCREEN_HEIGHT/2)+calculateProportionalSizeOrDistance(3)-calculateProportionalSizeOrDistance(12), line1, textColor, VAlignMiddle | HAlignCenter);
-		drawTextOnScreen(footerFont, (SCREEN_WIDTH/2), (SCREEN_HEIGHT/2)+calculateProportionalSizeOrDistance(3)+calculateProportionalSizeOrDistance(12), line2, textColor, VAlignMiddle | HAlignCenter);
+		drawTextOnScreen(settingsfont, NULL, (SCREEN_WIDTH/2), (SCREEN_HEIGHT/2)+calculateProportionalSizeOrDistance(3)-calculateProportionalSizeOrDistance(12), line1, textColor, VAlignMiddle | HAlignCenter);
+		drawTextOnScreen(settingsfont, NULL, (SCREEN_WIDTH/2), (SCREEN_HEIGHT/2)+calculateProportionalSizeOrDistance(3)+calculateProportionalSizeOrDistance(12), line2, textColor, VAlignMiddle | HAlignCenter);
 	}
 }
 
 SDL_Rect drawRectangleToScreen(int width, int height, int x, int y, int rgbColor[]) {
+	char temp[500];
+	snprintf(temp,sizeof(temp),"%d - %d - %d - %d - {%d,%d,%d}", width, height, x, y, rgbColor[0], rgbColor[1], rgbColor[2]);
+	logMessage("INFO",temp);
 	SDL_Rect rectangle;
 	rectangle.w = width;
 	rectangle.h = height;
 	rectangle.x = x;
 	rectangle.y = y;
+	logMessage("INFO","FIlling");
 	SDL_FillRect(screen, &rectangle, SDL_MapRGB(screen->format, rgbColor[0], rgbColor[1], rgbColor[2]));
 	return(rectangle);
 }
@@ -625,127 +664,10 @@ int drawImage(SDL_Surface* display, SDL_Surface *image, int x, int y, int xx, in
 	return 1;
 }
 
-int drawImage1(pthread_t *myThread, SDL_Surface *display, SDL_Surface *image, int x, int y, int xx, int yy , const double newwidth, const double newheight, int transparent, int smoothing) {
-
-	threadPicture picture;
-
-	picture.display = display;
-	picture.image=image;
-	picture.x=x;
-	picture.y=y;
-	picture.xx=xx;
-	picture.yy=yy;
-	picture.newwidth=newwidth;
-	picture.newheight=newheight;
-	picture.transparent=transparent;
-	picture.smoothing=smoothing;
-
-	pthread_create(myThread, NULL, thread_func, &picture); // no parentheses here
-	pthread_join(*myThread,NULL);
-	return 1;
-}
-
-void showHeart(int x, int y) {
-	SDL_Surface *img = IMG_Load(favoriteIndicator);
-	SDL_Rect rectangleDest;
-	rectangleDest.w = 0;
-	rectangleDest.h = 0;
-	rectangleDest.x = x;
-	rectangleDest.y = y;
-	SDL_BlitSurface(img, NULL, screen, &rectangleDest);
-	SDL_FreeSurface(img);
-}
-
-void displayImageOnScreenTraditional(char *fileName) {
-	SDL_Surface *screenshot = IMG_Load(fileName);
-	int rightRectangleColor[3] = {80, 80, 80};
-	int screenDivisions=(SCREEN_RATIO*5)/1.33;
-
-	drawTransparentRectangleToScreen((SCREEN_WIDTH/screenDivisions)*2,SCREEN_HEIGHT-calculateProportionalSizeOrDistance(43),SCREEN_WIDTH-(SCREEN_WIDTH/screenDivisions)*2,calculateProportionalSizeOrDistance(22),rightRectangleColor,60);
-
-	if (screenshot!=NULL) {
-		double w = screenshot->w;
-		double h = screenshot->h;
-		double ratio = 0;  // Used for aspect ratio
-		int smoothing = 1;
-		ratio = w / h;   // get ratio for scaling image
-		h = calculateProportionalSizeOrDistance(90);
-		w = h*ratio;
-		smoothing = 0;
-		if (w!=2*(SCREEN_WIDTH/screenDivisions)-calculateProportionalSizeOrDistance(8)) {
-			ratio = h / w;   // get ratio for scaling image
-			w = 2*(SCREEN_WIDTH/screenDivisions)-calculateProportionalSizeOrDistance(8);
-			h = w*ratio;
-			int max = 90;
-			int newMax = 90;
-			if(!(SCREEN_RATIO>=1.33&&SCREEN_RATIO<=1.34)) {
-				max = 116;
-				newMax = 100;
-			}
-			if (h>calculateProportionalSizeOrDistance(max)) {
-				ratio = w / h;   // get ratio for scaling image
-				h = calculateProportionalSizeOrDistance(newMax);
-				w = h*ratio;
-			}
-			smoothing=1;
-		}
-		drawRectangleToScreen(w+calculateProportionalSizeOrDistance(4),	h+calculateProportionalSizeOrDistance(4), SCREEN_WIDTH-(SCREEN_WIDTH/screenDivisions)-(w/2)-calculateProportionalSizeOrDistance(2), calculateProportionalSizeOrDistance(24),CURRENT_SECTION.headerAndFooterBackgroundColor);
-		drawTransparentRectangleToScreen(w,h,SCREEN_WIDTH-(SCREEN_WIDTH/screenDivisions)-(w/2),calculateProportionalSizeOrDistance(26),rightRectangleColor,125);
-		drawImage(screen, screenshot, SCREEN_WIDTH-(SCREEN_WIDTH/screenDivisions)-(w/2), calculateProportionalSizeOrDistance(26), 0, 0, w, h, 0, smoothing);
-		if(hideHeartTimer!=NULL) {
-			SDL_Surface *heart = IMG_Load(favoriteIndicator);
-			if (heart!=NULL) {
-				double wh = heart->w;
-				double hh = heart->h;
-				double ratioh = 0;  // Used for aspect ratio
-				ratioh = wh / hh;   // get ratio for scaling image
-				hh = calculateProportionalSizeOrDistance(heart->h);
-				if(hh!=heart->h) {
-					smoothing = 1;
-				}
-				wh = hh*ratioh;
-				drawImage(screen, heart, SCREEN_WIDTH-(SCREEN_WIDTH/screenDivisions)-(wh/2), calculateProportionalSizeOrDistance(26)+h/2-hh/2, 0, 0, wh, hh, 0, smoothing);
-			}
-		}
-	} else {
-		if(!(SCREEN_RATIO>=1.33&&SCREEN_RATIO<=1.34)) {
-			drawRectangleToScreen(calculateProportionalSizeOrDistance(138),calculateProportionalSizeOrDistance(104), SCREEN_WIDTH-(SCREEN_WIDTH/screenDivisions)-(calculateProportionalSizeOrDistance(134)/2)-calculateProportionalSizeOrDistance(2), calculateProportionalSizeOrDistance(24),CURRENT_SECTION.headerAndFooterBackgroundColor);
-			drawTransparentRectangleToScreen(calculateProportionalSizeOrDistance(134),calculateProportionalSizeOrDistance(100),SCREEN_WIDTH-(SCREEN_WIDTH/screenDivisions)-calculateProportionalSizeOrDistance(134/2),calculateProportionalSizeOrDistance(26),rightRectangleColor,125);
-		} else {
-			drawRectangleToScreen(calculateProportionalSizeOrDistance(124),calculateProportionalSizeOrDistance(94), SCREEN_WIDTH-(SCREEN_WIDTH/screenDivisions)-(calculateProportionalSizeOrDistance(120)/2)-calculateProportionalSizeOrDistance(2), calculateProportionalSizeOrDistance(24),CURRENT_SECTION.headerAndFooterBackgroundColor);
-			drawTransparentRectangleToScreen(calculateProportionalSizeOrDistance(120),calculateProportionalSizeOrDistance(90),SCREEN_WIDTH-(SCREEN_WIDTH/screenDivisions)-calculateProportionalSizeOrDistance(120/2),calculateProportionalSizeOrDistance(26),rightRectangleColor,125);
-		}
-		int smoothing = 0;
-		if(hideHeartTimer!=NULL) {
-			SDL_Surface *heart = IMG_Load(favoriteIndicator);
-			if (heart!=NULL) {
-				double wh = heart->w;
-				double hh = heart->h;
-				double ratioh = 0;  // Used for aspect ratio
-				ratioh = wh / hh;   // get ratio for scaling image
-				hh = calculateProportionalSizeOrDistance(heart->h);
-				if(hh!=heart->h) {
-					smoothing = 1;
-				}
-				wh = hh*ratioh;
-				drawImage(screen, heart, SCREEN_WIDTH-(SCREEN_WIDTH/screenDivisions)-(wh/2), calculateProportionalSizeOrDistance(26)+calculateProportionalSizeOrDistance(90)/2-hh/2, 0, 0, wh, hh, 0, smoothing);
-			}
-		}
-	}
-	SDL_Surface *systemImage = CURRENT_SECTION.systemPictureSurface;
-	if (systemImage!=NULL) {
-		int middleBottom = calculateProportionalSizeOrDistance(168)-systemImage->h/2;
-		if(!(SCREEN_RATIO>=1.33&&SCREEN_RATIO<=1.34)) {
-			middleBottom = calculateProportionalSizeOrDistance(173)-systemImage->h/2;
-		}
-		displaySurface(CURRENT_SECTION.systemPictureSurface, SCREEN_WIDTH-(SCREEN_WIDTH/screenDivisions)-(systemImage->w/2), middleBottom);
-	}
-}
-
 void displayImageOnScreenCustom(char *fileName) {
 	SDL_Surface *screenshot = IMG_Load(fileName);
-	if(systemXInCustom>0&&systemYInCustom>0) {
-			displaySurface(CURRENT_SECTION.systemPictureSurface,calculateProportionalSizeOrDistance(systemXInCustom), calculateProportionalSizeOrDistance(systemYInCustom));
+	if(systemX>0&&systemY>0) {
+		displaySurface(CURRENT_SECTION.systemPictureSurface,calculateProportionalSizeOrDistance(systemX), calculateProportionalSizeOrDistance(systemY));
 	}
 	if (screenshot!=NULL) {
 		double w = screenshot->w;
@@ -753,72 +675,47 @@ void displayImageOnScreenCustom(char *fileName) {
 		double ratio = 0;  // Used for aspect ratio
 		int smoothing = 1;
 		ratio = w / h;   // get ratio for scaling image
-		h = calculateProportionalSizeOrDistance(artHeightInCustom);
+		h = calculateProportionalSizeOrDistance(artHeight);
 		w = h*ratio;
 		smoothing = 0;
-		if (w!=calculateProportionalSizeOrDistance(artWidthInCustom)) {
+		if (w!=calculateProportionalSizeOrDistance(artWidth)) {
 			ratio = h / w;   // get ratio for scaling image
-			w = calculateProportionalSizeOrDistance(artWidthInCustom);
+			w = calculateProportionalSizeOrDistance(artWidth);
 			h = w*ratio;
-			if (h>calculateProportionalSizeOrDistance(artHeightInCustom)) {
+			if (h>calculateProportionalSizeOrDistance(artHeight)) {
 				ratio = w / h;   // get ratio for scaling image
-				h = calculateProportionalSizeOrDistance(artHeightInCustom);
+				h = calculateProportionalSizeOrDistance(artHeight);
 				w = h*ratio;
 			}
 			smoothing=1;
 		}
 		smoothing=0;
-		drawImage(screen, screenshot, calculateProportionalSizeOrDistance(artXInCustom+(artWidthInCustom/2))-w/2, calculateProportionalSizeOrDistance(artYInCustom), 0, 0, w, h, 0, smoothing);
-		if(hideHeartTimer!=NULL) {
-			SDL_Surface *heart = IMG_Load(favoriteIndicator);
-			if (heart!=NULL) {
-				double wh = heart->w;
-				double hh = heart->h;
-				double ratioh = 0;  // Used for aspect ratio
-				ratioh = wh / hh;   // get ratio for scaling image
-				hh = calculateProportionalSizeOrDistance(heart->h);
-				if(hh!=heart->h) {
-					smoothing = 1;
-					wh = hh*ratioh;
-				}
-				drawImage(screen, heart, calculateProportionalSizeOrDistance(artXInCustom)+w/2-(wh/2), calculateProportionalSizeOrDistance(artYInCustom)+h/2-hh/2, 0, 0, wh, hh, 0, smoothing);
-			}
-		}
-		if(artTextDistanceFromPictureInCustom>=0) {
+		int heartX = (calculateProportionalSizeOrDistance(artX)+(w/2));
+		int heartY = (calculateProportionalSizeOrDistance(artY)+(h/2));
+		displayHeart(heartX, heartY);
+		drawImage(screen, screenshot, calculateProportionalSizeOrDistance(artX+(artWidth/2))-w/2, calculateProportionalSizeOrDistance(artY), 0, 0, w, h, 0, smoothing);
+		displayHeart(heartX, heartY);
+		if(artTextDistanceFromPicture>=0) {
 			char temp[500];
 			snprintf(temp,sizeof(temp),"%d/%d", CURRENT_SECTION.realCurrentGameNumber, CURRENT_SECTION.gameCount);
-			drawCustomGameNameUnderPictureOnScreen(currentGameNameBeingDisplayed, calculateProportionalSizeOrDistance(artXInCustom+(artWidthInCustom/2)), calculateProportionalSizeOrDistance(artYInCustom)+h+calculateProportionalSizeOrDistance(artTextDistanceFromPictureInCustom),calculateProportionalSizeOrDistance(artWidthInCustom));
+			drawCustomGameNameUnderPictureOnScreen(currentGameNameBeingDisplayed, calculateProportionalSizeOrDistance(artX+(artWidth/2)), calculateProportionalSizeOrDistance(artY)+h+calculateProportionalSizeOrDistance(artTextDistanceFromPicture),calculateProportionalSizeOrDistance(artWidth));
 		}
 	} else {
-		int smoothing = 0;
-		if(artTextDistanceFromPictureInCustom>=0) {
+		int heartX = calculateProportionalSizeOrDistance(artX+(artWidth/2));
+		int heartY = calculateProportionalSizeOrDistance(artY)+(calculateProportionalSizeOrDistance((artWidth/4)*3)/2);
+		displayHeart(heartX, heartY);
+		if(artTextDistanceFromPicture>=0) {
 			char temp[500];
 			snprintf(temp,sizeof(temp),"%d/%d", CURRENT_SECTION.realCurrentGameNumber, CURRENT_SECTION.gameCount);
-			int artHeight = (artWidthInCustom/4)*3;
+			int artHeight = (artWidth/4)*3;
 			if (CURRENT_SECTION.gameCount>0) {
-				drawTransparentRectangleToScreen(calculateProportionalSizeOrDistance(artWidthInCustom),calculateProportionalSizeOrDistance(artHeight),calculateProportionalSizeOrDistance(artXInCustom+(artWidthInCustom/2))-calculateProportionalSizeOrDistance(artWidthInCustom)/2,calculateProportionalSizeOrDistance(artYInCustom),CURRENT_SECTION.headerAndFooterBackgroundColor,120);
-				drawCustomGameNameUnderPictureOnScreen(currentGameNameBeingDisplayed, calculateProportionalSizeOrDistance(artXInCustom)+calculateProportionalSizeOrDistance(artWidthInCustom)/2, calculateProportionalSizeOrDistance(artYInCustom)+calculateProportionalSizeOrDistance(artHeight)+calculateProportionalSizeOrDistance(artTextDistanceFromPictureInCustom),calculateProportionalSizeOrDistance(artWidthInCustom));
-			}
-		}
-		if(hideHeartTimer!=NULL) {
-			SDL_Surface *heart = IMG_Load(favoriteIndicator);
-			if (heart!=NULL) {
-				double wh = heart->w;
-				double hh = heart->h;
-				double ratioh = 0;  // Used for aspect ratio
-				ratioh = wh / hh;   // get ratio for scaling image
-				hh = calculateProportionalSizeOrDistance(heart->h);
-				if(hh!=heart->h) {
-					smoothing = 1;
-				}
-				wh = hh*ratioh;
-				drawImage(screen, heart, calculateProportionalSizeOrDistance(artXInCustom+artWidthInCustom/2)-(wh/2), calculateProportionalSizeOrDistance(artYInCustom)+calculateProportionalSizeOrDistance((artWidthInCustom/4)*3)/2-hh/2, 0, 0, wh, hh, 0, smoothing);
+				drawCustomGameNameUnderPictureOnScreen(currentGameNameBeingDisplayed, calculateProportionalSizeOrDistance(artX)+calculateProportionalSizeOrDistance(artWidth)/2, calculateProportionalSizeOrDistance(artY)+calculateProportionalSizeOrDistance(artHeight)+calculateProportionalSizeOrDistance(artTextDistanceFromPicture),calculateProportionalSizeOrDistance(artWidth));
 			}
 		}
 	}
 }
 
-void displayHeart() {
+void displayHeart(int x, int y) {
 	if(hideHeartTimer!=NULL) {
 		SDL_Surface *heart = IMG_Load(favoriteIndicator);
 		if (heart!=NULL) {
@@ -833,88 +730,8 @@ void displayHeart() {
 			}
 			wh = hh*ratioh;
 			smoothing = 1;
-			drawImage(screen, heart, SCREEN_WIDTH/2-(wh/2), SCREEN_HEIGHT/2-hh/2, 0, 0, wh, hh, 0, smoothing);
+			drawImage(screen, heart, x-(wh/2), y-(hh/2), 0, 0, wh, hh, 0, smoothing);
 		}
-	}
-}
-
-void displayImageOnScreenDrunkenMonkey(char *fileName) {
-	SDL_Surface *screenshot = IMG_Load(fileName);
-	int rightRectangleColor[3] = {80, 80, 80};
-	int screenDivisions=(SCREEN_RATIO*3)/1.33;
-
-	drawTransparentRectangleToScreen((SCREEN_WIDTH/screenDivisions),SCREEN_HEIGHT-calculateProportionalSizeOrDistance((22*fontSize)/baseFont)*2,SCREEN_WIDTH-(SCREEN_WIDTH/screenDivisions),calculateProportionalSizeOrDistance((22*fontSize)/baseFont),rightRectangleColor,60);
-
-	if (screenshot!=NULL) {
-		double w = screenshot->w;
-		double h = screenshot->h;
-		double ratio = 0;  // Used for aspect ratio
-		int smoothing = 1;
-		ratio = w / h;   // get ratio for scaling image
-		h = calculateProportionalSizeOrDistance(72);
-		w = h*ratio;
-		smoothing = 0;
-		if (w!=(SCREEN_WIDTH/screenDivisions)-calculateProportionalSizeOrDistance(8)) {
-			ratio = h / w;   // get ratio for scaling image
-			w = (SCREEN_WIDTH/screenDivisions)-calculateProportionalSizeOrDistance(8);
-			h = w*ratio;
-			smoothing=1;
-		}
-		drawRectangleToScreen(w+calculateProportionalSizeOrDistance(4),	h+calculateProportionalSizeOrDistance(4), SCREEN_WIDTH-(SCREEN_WIDTH/screenDivisions/2)-(w/2)-calculateProportionalSizeOrDistance(2), calculateProportionalSizeOrDistance((24*fontSize)/baseFont),CURRENT_SECTION.headerAndFooterBackgroundColor);
-		drawTransparentRectangleToScreen(w,h,SCREEN_WIDTH-(SCREEN_WIDTH/screenDivisions/2)-(w/2),calculateProportionalSizeOrDistance((27*fontSize)/baseFont),rightRectangleColor,125);
-		drawImage(screen, screenshot, SCREEN_WIDTH-(SCREEN_WIDTH/screenDivisions/2)-(w/2), calculateProportionalSizeOrDistance((27*fontSize)/baseFont), 0, 0, w, h, 0, smoothing);
-		if(hideHeartTimer!=NULL) {
-			SDL_Surface *heart = IMG_Load(favoriteIndicator);
-			if (heart!=NULL) {
-				double wh = heart->w;
-				double hh = heart->h;
-				double ratioh = 0;  // Used for aspect ratio
-				int smoothing = 1;
-				ratioh = wh / hh;   // get ratio for scaling image
-				hh = calculateProportionalSizeOrDistance(heart->h);
-				if(hh!=heart->h) {
-					smoothing = 1;
-				}
-				wh = hh*ratioh;
-				smoothing = 1;
-				drawImage(screen, heart, SCREEN_WIDTH-(SCREEN_WIDTH/screenDivisions/2)-(wh/2), calculateProportionalSizeOrDistance((27*fontSize)/baseFont)+h/2-hh/2, 0, 0, wh, hh, 0, smoothing);
-			}
-		}
-	} else {
-
-		if(!(SCREEN_RATIO>=1.33&&SCREEN_RATIO<=1.34)) {
-			drawRectangleToScreen(calculateProportionalSizeOrDistance(102),calculateProportionalSizeOrDistance(78), SCREEN_WIDTH-(SCREEN_WIDTH/screenDivisions/2)-(calculateProportionalSizeOrDistance(98)/2)-calculateProportionalSizeOrDistance(2), calculateProportionalSizeOrDistance((24*fontSize)/baseFont),CURRENT_SECTION.headerAndFooterBackgroundColor);
-			drawTransparentRectangleToScreen(calculateProportionalSizeOrDistance(98),calculateProportionalSizeOrDistance(74),SCREEN_WIDTH-(SCREEN_WIDTH/screenDivisions/2)-calculateProportionalSizeOrDistance(98/2),calculateProportionalSizeOrDistance((27*fontSize)/baseFont),rightRectangleColor,125);
-		} else {
-			drawRectangleToScreen(calculateProportionalSizeOrDistance(96)+calculateProportionalSizeOrDistance(4), calculateProportionalSizeOrDistance(72)+calculateProportionalSizeOrDistance(4), SCREEN_WIDTH-(SCREEN_WIDTH/screenDivisions/2)-(calculateProportionalSizeOrDistance(96)/2)-calculateProportionalSizeOrDistance(2), calculateProportionalSizeOrDistance((24*fontSize)/baseFont),CURRENT_SECTION.headerAndFooterBackgroundColor);
-			drawTransparentRectangleToScreen(calculateProportionalSizeOrDistance(96),calculateProportionalSizeOrDistance(72),SCREEN_WIDTH-(SCREEN_WIDTH/screenDivisions/2)-(calculateProportionalSizeOrDistance(96)/2),calculateProportionalSizeOrDistance((27*fontSize)/baseFont),rightRectangleColor,125);
-		}
-		if(hideHeartTimer!=NULL) {
-			SDL_Surface *heart = IMG_Load(favoriteIndicator);
-			if (heart!=NULL) {
-				double wh = heart->w;
-				double hh = heart->h;
-				double ratioh = 0;  // Used for aspect ratio
-				int smoothing = 1;
-				ratioh = wh / hh;   // get ratio for scaling image
-				hh = calculateProportionalSizeOrDistance(heart->h);
-				if(hh!=heart->h) {
-					smoothing = 1;
-				}
-				wh = hh*ratioh;
-				smoothing = 1;
-				drawImage(screen, heart, SCREEN_WIDTH-(SCREEN_WIDTH/screenDivisions/2)-(wh/2), calculateProportionalSizeOrDistance((27*fontSize)/baseFont)+calculateProportionalSizeOrDistance(72)/2-hh/2, 0, 0, wh, hh, 0, smoothing);
-			}
-		}
-	}
-
-	SDL_Surface *systemImage = CURRENT_SECTION.systemPictureSurface;
-	if (systemImage!=NULL) {
-		int middleBottom = SCREEN_HEIGHT-systemImage->h-calculateProportionalSizeOrDistance(18);
-		if(!(SCREEN_RATIO>=1.33&&SCREEN_RATIO<=1.34)) {
-			middleBottom = SCREEN_HEIGHT-calculateProportionalSizeOrDistance(16)-systemImage->h;
-		}
-		displaySurface(CURRENT_SECTION.systemPictureSurface, SCREEN_WIDTH-(SCREEN_WIDTH/screenDivisions/2)-(systemImage->w/2), middleBottom);
 	}
 }
 
@@ -968,7 +785,7 @@ SDL_Surface *resizeSurfaceToFitScreen (SDL_Surface *surface) {
 		return surface;
 	}
 	int smoothing = 0;
-	if (surface->w!=SCREEN_WIDTH || surface->h!=SCREEN_HEIGHT) {
+	if ((surface->w!=SCREEN_WIDTH || surface->h!=SCREEN_HEIGHT) && !(SCREEN_WIDTH%surface->w==0 && SCREEN_HEIGHT%surface->h==0)) {
 		smoothing=1;
 	}
 	double zoomx = (float)SCREEN_WIDTH / surface->w;
@@ -990,12 +807,11 @@ SDL_Surface *resizeSurface(SDL_Surface *surface, int w, int h) {
 	}
 	int newW = (float)calculateProportionalSizeOrDistance(w);
 	int newH = (float)calculateProportionalSizeOrDistance(h);
-
 	if (newW==surface->w&&newH==surface->h) {
 		return surface;
 	}
 	int smoothing = 0;
-	if (surface->w!=calculateProportionalSizeOrDistance(w) || surface->h!=calculateProportionalSizeOrDistance(h)) {
+	if ((surface->w!=calculateProportionalSizeOrDistance(w) || surface->h!=calculateProportionalSizeOrDistance(h)) && !(calculateProportionalSizeOrDistance(w)%surface->w==0 && calculateProportionalSizeOrDistance(h)%surface->h==0)) {
 		smoothing=1;
 	}
 	double zoomx = (float)(newW / (float)surface->w);
@@ -1026,13 +842,7 @@ void resizeGroupBackground(struct SectionGroup *group) {
 }
 
 void resizeSectionSystemPicture(struct MenuSection *section) {
-	if (currentMode==1) {
-		section->systemPictureSurface = resizeSurface(section->systemPictureSurface, 120, 90);
-	} else if (currentMode==2) {
-		section->systemPictureSurface = resizeSurface(section->systemPictureSurface, 90, 72);
-	} else {
-		section->systemPictureSurface = resizeSurface(section->systemPictureSurface, systemWidthInCustom, systemHeightInCustom);
-	}
+	section->systemPictureSurface = resizeSurface(section->systemPictureSurface, systemWidth, systemHeight);
 }
 
 void displayCenteredSurface(SDL_Surface *surface) {
@@ -1047,6 +857,7 @@ void displayCenteredSurface(SDL_Surface *surface) {
 	rectangleDest.x = SCREEN_WIDTH/2-surface->w/2;
 	rectangleDest.y = ((SCREEN_HEIGHT)/2-surface->h/2);
 	SDL_BlitSurface(surface, NULL, screen, &rectangleDest);
+	logMessage("INFO","Displayed surface");
 }
 
 void displaySurface(SDL_Surface *surface, int x, int y) {
@@ -1115,16 +926,29 @@ void drawUSBScreen() {
 	int white[3]={255, 255, 255};
 	int black[3]={0, 0, 0};
 	displayCenteredImageOnScreen("./usb.png"," ",1,0);
-	drawTextOnScreen(headerFont,163,27,"USB MODE",black,VAlignMiddle | HAlignCenter);
-	drawTextOnScreen(headerFont,163,29,"USB MODE",black,VAlignMiddle | HAlignCenter);
-	drawTextOnScreen(headerFont,161,27,"USB MODE",white,VAlignMiddle | HAlignCenter);
-	drawTextOnScreen(headerFont,163,217,"PRESS START TO END",black,VAlignMiddle | HAlignCenter);
-	drawTextOnScreen(headerFont,163,219,"PRESS START TO END",black,VAlignMiddle | HAlignCenter);
-	drawTextOnScreen(headerFont,161,217,"PRESS START TO END",white,VAlignMiddle | HAlignCenter);
+	drawTextOnScreen(headerFont, NULL, 163,27,"USB MODE",black,VAlignMiddle | HAlignCenter);
+	drawTextOnScreen(headerFont, NULL, 163,29,"USB MODE",black,VAlignMiddle | HAlignCenter);
+	drawTextOnScreen(headerFont, NULL, 161,27,"USB MODE",white,VAlignMiddle | HAlignCenter);
+	drawTextOnScreen(headerFont, NULL, 163,217,"PRESS START TO END",black,VAlignMiddle | HAlignCenter);
+	drawTextOnScreen(headerFont, NULL, 163,219,"PRESS START TO END",black,VAlignMiddle | HAlignCenter);
+	drawTextOnScreen(headerFont, NULL, 161,217,"PRESS START TO END",white,VAlignMiddle | HAlignCenter);
 }
 
 void initializeDisplay() {
+	SDL_ShowCursor(0);
+
+	setenv("SDL_FBCON_DONT_CLEAR", "1", 0);
+#ifdef TARGET_OD
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER);
+	screen = SDL_SetVideoMode(320, 240, 32, SDL_SWSURFACE);
+	SDL_FreeSurface(screen);
+	SDL_Quit();
+#endif
+	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER);
+
+	//    SDL_JoystickEventState(SDL_ENABLE);
+	//    joystick = SDL_JoystickOpen(0);
+
 	char * line = NULL;
 	size_t len = 0;
 	FILE *fpHDMI = fopen("/sys/class/hdmi/hdmi","r");
@@ -1133,19 +957,19 @@ void initializeDisplay() {
 		read = getline(&line, &len, fpHDMI);
 		hdmiEnabled = atoi(line);
 		fclose(fpHDMI);
-	}
-	if (read!=-1) {
-		free(line);
+		if (read!=-1) {
+			free(line);
+		}
 	}
 
 	hdmiChanged = hdmiEnabled;
 	if (hdmiEnabled) {
-		SCREEN_WIDTH = 640;
-		SCREEN_HEIGHT = 480;
+		SCREEN_WIDTH = HDMI_WIDTH;
+		SCREEN_HEIGHT = HDMI_HEIGHT;
 	}
 	SCREEN_RATIO = (double)SCREEN_WIDTH/SCREEN_HEIGHT;
-	SDL_ShowCursor(0);
-	#ifdef TARGET_RG300
+
+#ifdef TARGET_RFW
 	//	ipu modes (/proc/jz/ipu):
 	//	0: stretch
 	//	1: aspect
@@ -1154,39 +978,109 @@ void initializeDisplay() {
 	FILE *fp = fopen("/proc/jz/ipu","w");
 	fprintf(fp,"0");
 	fclose(fp);
-	#endif
-	#ifdef TARGET_PC
-	screen = SDL_SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, 16, SDL_SWSURFACE);
-	#else
-	screen = SDL_SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, 16, SDL_SWSURFACE | SDL_NOFRAME);
-	#endif
-	TTF_Init();
+#endif
+#ifdef TARGET_PC
+//	const SDL_VideoInfo* info = SDL_GetVideoInfo();   //<-- calls SDL_GetVideoInfo();
+	//	SCREEN_HEIGHT = info->current_h;
+	SCREEN_HEIGHT = 480;
+	SCREEN_WIDTH = (SCREEN_HEIGHT/3)*4;
+	SCREEN_RATIO = (double)SCREEN_WIDTH/SCREEN_HEIGHT;
+	screen = SDL_SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, 32, SDL_HWSURFACE);
+//	SDL_ShowCursor(0);
+#else
+	SDL_ShowCursor(0);
+
+	SCREEN_WIDTH=320;
+	SCREEN_HEIGHT=240;
+
+	SDL_Rect** modes = SDL_ListModes(NULL,SDL_NOFRAME|SDL_SWSURFACE);
+
+	FILE *fp = fopen("/sys/class/graphics/fb0/device/allow_downscaling","w");
+	if (fp!=NULL) {
+		fprintf(fp, "%d" , 0);
+		fclose(fp);
+	}
+
+#if defined TARGET_OD || defined TARGET_OD_BETA
+	if(modes==(SDL_Rect **)0) {
+		printf("No available modes\n");
+	} else if(modes==(SDL_Rect **)-1) {
+		printf("All modes available\n");
+	} else {
+		printf("Available modes:\n");
+		for(int i=0; modes[i]; i++) {
+			printf("%dx%d\n", modes[i]->w, modes[i]->h);
+			if (modes[i]->w==640 && modes[i]->h ==480) {
+				SCREEN_WIDTH=640;
+				SCREEN_HEIGHT=480;
+				break;
+			}
+		}
+	}
+#endif
+	screen = SDL_SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, 32, SDL_NOFRAME|SDL_SWSURFACE);
+	if (screen==NULL) {
+		SCREEN_WIDTH=320;
+		SCREEN_HEIGHT=240;
+		screen = SDL_SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, 32, SDL_NOFRAME|SDL_SWSURFACE);
+	}
+
+#endif
+	//	TTF_Init();
 	MAGIC_NUMBER = SCREEN_WIDTH-calculateProportionalSizeOrDistance(2);
+	logMessage("INFO","Initialized Display");
 }
 
 
 
 void refreshScreen() {
 	SDL_Flip(screen);
+//	int black[3] = {0,0,0};
+//	drawRectangleToScreen(SCREEN_WIDTH,SCREEN_HEIGHT,0,0,black);
 }
 
 void initializeSettingsFonts() {
-	settingsfont = TTF_OpenFont(menuFont, calculateProportionalSizeOrDistance(settingsFontSize));
-	settingsHeaderFont = TTF_OpenFont(menuFont, calculateProportionalSizeOrDistance(settingsFontSize+6));
-	settingsStatusFont = TTF_OpenFont(menuFont, calculateProportionalSizeOrDistance(settingsFontSize));
-	settingsFooterFont = TTF_OpenFont(menuFont, calculateProportionalSizeOrDistance(settingsFontSize+2));
+	logMessage("INFO","Initializing Settings Fonts");
+	char *akashi = "resources/akashi.ttf";
+	settingsfont = TTF_OpenFont(akashi, calculateProportionalSizeOrDistance(15));
+	settingsHeaderFont = TTF_OpenFont(akashi, calculateProportionalSizeOrDistance(27));
+	settingsStatusFont = TTF_OpenFont(akashi, calculateProportionalSizeOrDistance(15));
+	settingsFooterFont = TTF_OpenFont(akashi, calculateProportionalSizeOrDistance(16));
+	logMessage("INFO","Settings Fonts initialized");
 }
 
 void initializeFonts() {
 	TTF_Init();
+	char *akashi = "resources/akashi.ttf";
+
 	font = TTF_OpenFont(menuFont, calculateProportionalSizeOrDistance(fontSize));
-	miniFont = TTF_OpenFont(menuFont, calculateProportionalSizeOrDistance(fontSize-2));
+	outlineFont = TTF_OpenFont(menuFont, calculateProportionalSizeOrDistance(fontSize));;
+
+	miniFont = TTF_OpenFont(menuFont, calculateProportionalSizeOrDistance(artTextFontSize));
+	outlineMiniFont = TTF_OpenFont(menuFont, calculateProportionalSizeOrDistance(artTextFontSize));
+
 	picModeFont = TTF_OpenFont(menuFont, calculateProportionalSizeOrDistance(fontSize+5));
-	BIGFont = TTF_OpenFont(menuFont, calculateProportionalSizeOrDistance(fontSize+18));
+	BIGFont = TTF_OpenFont(akashi, calculateProportionalSizeOrDistance(fontSize+18));
 	headerFont = TTF_OpenFont(menuFont, calculateProportionalSizeOrDistance(fontSize+6));
+	outlineHeaderFont = TTF_OpenFont(menuFont, calculateProportionalSizeOrDistance(fontSize+6));
+
 	footerFont = TTF_OpenFont(menuFont, calculateProportionalSizeOrDistance(fontSize+2));
-	customHeaderFont = TTF_OpenFont(textXFontCustom, calculateProportionalSizeOrDistance(text1FontSizeInCustom));
-	customCountFont = TTF_OpenFont(textXFontCustom, calculateProportionalSizeOrDistance(text2FontSizeInCustom));
+	outlineFooterFont = TTF_OpenFont(menuFont, calculateProportionalSizeOrDistance(fontSize+2));
+
+	customHeaderFont = TTF_OpenFont(textXFont, calculateProportionalSizeOrDistance(text1FontSize));
+	outlineCustomHeaderFont = TTF_OpenFont(textXFont, calculateProportionalSizeOrDistance(text1FontSize));
+
+	customCountFont = TTF_OpenFont(textXFont, calculateProportionalSizeOrDistance(text2FontSize));
+	outlineCustomCountFont = TTF_OpenFont(textXFont, calculateProportionalSizeOrDistance(text2FontSize));
+	if (menuFont!=NULL && strlen(menuFont)>2) {
+		TTF_SetFontOutline(outlineFont,fontOutline);
+		TTF_SetFontOutline(outlineMiniFont,fontOutline);
+		TTF_SetFontOutline(outlineHeaderFont,fontOutline);
+		TTF_SetFontOutline(outlineFooterFont,fontOutline);
+		TTF_SetFontOutline(outlineCustomHeaderFont,fontOutline);
+		TTF_SetFontOutline(outlineCustomCountFont,fontOutline);
+	}
+	logMessage("INFO","Fonts initialized");
 }
 
 void freeFonts() {
@@ -1205,7 +1099,19 @@ void freeFonts() {
 	TTF_CloseFont(miniFont);
 	miniFont = NULL;
 	TTF_CloseFont(BIGFont);
-	footerFont = NULL;
+	BIGFont = NULL;
+	TTF_CloseFont(outlineCustomHeaderFont);
+	outlineCustomHeaderFont = NULL;
+	//	TTF_CloseFont(outlineFont);
+	//	outlineFont = NULL;
+	TTF_CloseFont(outlineMiniFont);
+	outlineMiniFont = NULL;
+	TTF_CloseFont(outlineHeaderFont);
+	outlineHeaderFont = NULL;
+	TTF_CloseFont(outlineCustomCountFont);
+	outlineCustomCountFont = NULL;
+	TTF_CloseFont(outlineFooterFont);
+	outlineFooterFont = NULL;
 }
 
 void freeSettingsFonts() {
@@ -1223,14 +1129,14 @@ void freeResources() {
 	freeFonts();
 	freeSettingsFonts();
 	TTF_Quit();
-	#if defined TARGET_RG350 || defined TARGET_RG350_BETA
+#if defined TARGET_OD || defined TARGET_OD_BETA
 	Shake_Stop(device, effect_id);
 	Shake_EraseEffect(device, effect_id);
 	Shake_Close(device);
 	Shake_Quit();
-	#endif
-	#ifndef TARGET_PC
+#endif
+#ifndef TARGET_PC
 	closeLogFile();
-	#endif
+#endif
 	SDL_Quit();
 }

@@ -9,10 +9,16 @@
 #include "../headers/system_logic.h"
 #include "../headers/utils.h"
 
-int performAction(struct Rom *rom) {
-	if(currentlySectionSwitching) {
+int performAction(struct Node *node) {
+	struct Rom *rom;
+	if (node!=NULL) {
+		rom = node->data;
+	} else {
+		rom = NULL;
+	}
+	if(currentState==SELECTING_SECTION) {
 		if (keys[BTN_A]) {
-			currentlySectionSwitching=0;
+			currentState=BROWSING_GAME_LIST;
 			if (CURRENT_SECTION.backgroundSurface==NULL) {
 				logMessage("INFO","Loading system background");
 				CURRENT_SECTION.backgroundSurface = IMG_Load(CURRENT_SECTION.background);
@@ -22,11 +28,10 @@ int performAction(struct Rom *rom) {
 				resizeSectionSystemPicture(&CURRENT_SECTION);
 			}
 			if (keys[BTN_START]) {
-				currentlySectionSwitching=0;
+				currentState=SETTINGS_SCREEN;
 				chosenSetting=SHUTDOWN_OPTION;
 				selectedShutDownOption=0;
-				currentlyChoosing=3;
-				pthread_create(&clockThread, NULL, updateClock,NULL);
+//				pthread_create(&clockThread, NULL, updateClock,NULL);
 				return 1;
 			}
 			return 1;
@@ -44,12 +49,12 @@ int performAction(struct Rom *rom) {
 				return(1);
 			}
 		}
-		if (rom!=NULL&&keys[BTN_A]&&!currentlySectionSwitching) {
+		if (rom!=NULL&&keys[BTN_A]&&!(currentState==SELECTING_SECTION)) {
 			launchEmulator(rom);
 			aKeyComboWasPressed=1;
 			return 1;
 		}
-		if (rom!=NULL&&keys[BTN_X]&&!currentlySectionSwitching) {
+		if (rom!=NULL&&keys[BTN_X]&&!(currentState==SELECTING_SECTION)) {
 			if (!isPicModeMenuHidden) {
 				resetPicModeHideMenuTimer();
 			}
@@ -66,21 +71,20 @@ int performAction(struct Rom *rom) {
 			}
 		}
 
-		if (keys[BTN_START]&&!currentlySectionSwitching) {
+		if (keys[BTN_START]&&!(currentState==SELECTING_SECTION)) {
 			hotKeyPressed=0;
 			cycleFrequencies();
 			aKeyComboWasPressed=1;
 			return 0;
 		}
-		if (rom!=NULL&&keys[BTN_SELECT]&&!currentlySectionSwitching) {
+		if (rom!=NULL&&keys[BTN_SELECT]&&!(currentState==SELECTING_SECTION)) {
 			for(int i=0;i<25;i++) {
 				selectRandomGame();
-				updateScreen(CURRENT_SECTION.currentGameNode->data);
 			}
 			saveFavorites();
 			launchGame(CURRENT_SECTION.currentGameNode->data);
 		}
-		if (rom!=NULL&&keys[BTN_DOWN]&&!currentlySectionSwitching) {
+		if (rom!=NULL&&keys[BTN_DOWN]&&!(currentState==SELECTING_SECTION)) {
 			hotKeyPressed=1;
 			CURRENT_SECTION.alphabeticalPaging=1;
 			advancePage(rom);
@@ -90,7 +94,7 @@ int performAction(struct Rom *rom) {
 			aKeyComboWasPressed=1;
 			return 0;
 		}
-		if (rom!=NULL&&keys[BTN_UP]&&!currentlySectionSwitching) {
+		if (rom!=NULL&&keys[BTN_UP]&&!(currentState==SELECTING_SECTION)) {
 			hotKeyPressed=1;
 			CURRENT_SECTION.alphabeticalPaging=1;
 			rewindPage(rom);
@@ -102,7 +106,7 @@ int performAction(struct Rom *rom) {
 		}
 		if(keys[BTN_RIGHT]) {
 			hotKeyPressed=0;
-			currentlySectionSwitching=1;
+			currentState=SELECTING_SECTION;
 			int advanced = advanceSection(1);
 			if(advanced) {
 				if (CURRENT_SECTION.backgroundSurface == NULL) {
@@ -123,7 +127,7 @@ int performAction(struct Rom *rom) {
 		}
 		if(keys[BTN_LEFT]) {
 			hotKeyPressed=0;
-			currentlySectionSwitching=1;
+			currentState=SELECTING_SECTION;
 			int rewinded = rewindSection(1);
 			if(rewinded) {
 				if (CURRENT_SECTION.backgroundSurface == NULL) {
@@ -144,13 +148,14 @@ int performAction(struct Rom *rom) {
 		}
 	}
 	if (CURRENT_SECTION.executables[1]!=NULL&&keys[BTN_SELECT]&&!favoritesSectionSelected) {
-		currentlyChoosing=1;
+		currentState=1;
 		return 0;
 	}
 	if(keys[BTN_L1]) {
 		hotKeyPressed=0;
 		if(currentSectionNumber!=favoritesSectionNumber&&autoHideLogos) {
 			resetPicModeHideLogoTimer();
+//			displayLogo=1;
 		}
 		int rewinded = rewindSection(1);
 		if(rewinded) {
@@ -166,6 +171,7 @@ int performAction(struct Rom *rom) {
 		hotKeyPressed=0;
 		if(currentSectionNumber!=favoritesSectionNumber&&autoHideLogos) {
 			resetPicModeHideLogoTimer();
+//			displayLogo=1;
 		}
 		int advanced = advanceSection(1);
 		if(advanced) {
@@ -177,7 +183,7 @@ int performAction(struct Rom *rom) {
 		return 0;
 	}
 
-	if (!currentlySectionSwitching&&!hotKeyPressed&&!isUSBMode) {
+	if (!(currentState==SELECTING_SECTION)&&!hotKeyPressed&&!isUSBMode) {
 
 		if (rom!=NULL&&keys[BTN_X]) {
 			if(!isPicModeMenuHidden) {
@@ -196,8 +202,8 @@ int performAction(struct Rom *rom) {
 		if (keys[BTN_START]) {
 			chosenSetting=SHUTDOWN_OPTION;
 			selectedShutDownOption=0;
-			currentlyChoosing=3;
-			pthread_create(&clockThread, NULL, updateClock,NULL);
+			currentState=3;
+//			pthread_create(&clockThread, NULL, updateClock,NULL);
 			return 0;
 		}
 		if (keys[BTN_R]) {

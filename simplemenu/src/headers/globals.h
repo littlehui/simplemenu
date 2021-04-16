@@ -1,17 +1,30 @@
 #ifndef GLOBALS_DEFINED
 #define GLOBALS_DEFINED
 
+#define BROWSING_GAME_LIST 0
+#define BROWSING_GAME_LIST_AFTER_TIMER 6
+#define SELECTING_EMULATOR 1
+#define CHOOSING_GROUP 2
+#define SETTINGS_SCREEN 3
+#define SELECTING_SECTION 4
+#define SHUTTING_DOWN 5
+
 #include <pthread.h>
 #include <SDL/SDL_timer.h>
 #include <SDL/SDL_image.h>
 #include "../headers/hashtable.h"
 #include "../headers/constants.h"
 
-#if defined TARGET_RG350 || defined TARGET_RG350_BETA
+#if defined TARGET_OD || defined TARGET_OD_BETA
 #include <shake.h>
 #endif
 
+extern int updateScreenFlag;
+
+extern SDL_Surface *screen;
+extern int displayLogo;
 /* STATUS */
+extern int nullUpdate;
 extern char *errorMessage;
 extern int running;
 extern int itsStoppedBecauseOfAnError;
@@ -25,7 +38,7 @@ extern int fullscreenMode;
 extern int hotKeyPressed;
 extern int aKeyComboWasPressed;
 extern int currentlySectionSwitching;
-extern int currentlyChoosing;
+extern int currentState;
 extern int loading;
 extern int isPicModeMenuHidden;
 extern int isSuspended;
@@ -38,6 +51,7 @@ extern SDL_TimerID timeoutTimer;
 extern SDL_TimerID picModeHideMenuTimer;
 extern SDL_TimerID picModeHideLogoTimer;
 extern SDL_TimerID hideHeartTimer;
+extern SDL_TimerID screenTimer;
 
 typedef struct thread_picture {
 	  SDL_Surface* display;
@@ -76,6 +90,7 @@ extern int AUTO_HIDE_LOGOS_OPTION;
 extern int ITEMS_PER_PAGE_OPTION;
 extern char mediaFolder[1000];
 extern int stripGames;
+extern int useCache;
 extern int shutDownEnabled;
 extern int selectedShutDownOption;
 extern int footerVisibleInFullscreenMode;
@@ -98,72 +113,47 @@ extern int currentMode;
 extern char menuFont[1000];
 extern int baseFont;
 extern int fontSize;
-extern int settingsFontSize;
 extern int transparentShading;
 extern int footerOnTop;
 extern char simpleBackground[1000];
 extern char fullscreenBackground[1000];
 extern char favoriteIndicator[1000];
 extern char sectionGroupsFolder[1000];
-
-extern int itemsInSimple;
-extern int itemsInFullSimple;
-extern int itemsSeparationInSimple;
-extern int gameListPositionInSimple;
-extern int gameListPositionInFullSimple;
-extern int headerPositionInSimple;
-extern int footerPositionInSimple;
-
-extern int itemsInTraditional;
-extern int itemsInFullTraditional;
-extern int itemsSeparationInTraditional;
-extern int gameListPositionInTraditional;
-extern int gameListPositionInFullTraditional;
-extern int headerPositionInTraditional;
-extern int footerPositionInTraditional;
-
-extern int itemsInDrunkenMonkey;
-extern int itemsInFullDrunkenMonkey;
-extern int itemsSeparationInDrunkenMonkey;
-extern int gameListPositionInDrunkenMonkey;
-extern int gameListPositionInFullDrunkenMonkey;
-extern int headerPositionInDrunkenMonkey;
-extern int footerPositionInDrunkenMonkey;
-
-extern int itemsInCustom;
-extern int itemsInFullCustom;
-extern int itemsSeparationInCustom;
-extern char textXFontCustom[1000];
-extern int text1FontSizeInCustom;
-extern int text1XInCustom;
-extern int text1YInCustom;
-extern int text1AlignmentInCustom;
-extern int text2FontSizeInCustom;
-extern int text2XInCustom;
-extern int text2YInCustom;
-extern int text2AlignmentInCustom;
-extern int text3FontSizeInCustom;
-extern int text3XInCustom;
-extern int text3YInCustom;
-extern int text3AlignmentInCustom;
-extern int gameListAlignmentInCustom;
-extern int gameListXInCustom;
-extern int gameListYInCustom;
-extern int gameListWidthInCustom;
-extern int gameListPositionInFullCustom;
-extern int artWidthInCustom;
-extern int artHeightInCustom;
-extern int artXInCustom;
-extern int artYInCustom;
-extern int artTextDistanceFromPictureInCustom;
-extern int artTextLineSeparationInCustom;
-extern int artTextFontSizeInCustom;
-extern int systemWidthInCustom;
-extern int systemHeightInCustom;
-extern int systemXInCustom;
-extern int systemYInCustom;
-extern int fontSizeCustom;
+extern int itemsPerPage;
+extern int itemsPerPageFullscreen;
+extern int itemsSeparation;
+extern char textXFont[1000];
+extern int text1FontSize;
+extern int text1X;
+extern int text1Y;
+extern int text1Alignment;
+extern int text2FontSize;
+extern int text2X;
+extern int text2Y;
+extern int text2Alignment;
+extern int text3FontSize;
+extern int text3X;
+extern int text3Y;
+extern int text3Alignment;
+extern int gameListAlignment;
+extern int gameListX;
+extern int gameListY;
+extern int gameListWidth;
+extern int gameListPositionFullScreen;
+extern int artWidth;
+extern int artHeight;
+extern int artX;
+extern int artY;
+extern int artTextDistanceFromPicture;
+extern int artTextLineSeparation;
+extern int artTextFontSize;
+extern int systemWidth;
+extern int systemHeight;
+extern int systemX;
+extern int systemY;
+extern int fontSize;
 extern int colorfulFullscreenMenu;
+extern int fontOutline;
 extern int displaySectionGroupName;
 
 /* STRUCTS */
@@ -172,11 +162,14 @@ struct OPKDesktopFile {
 	char name[200];
 	char displayName[200];
 	char category[200];
+	int isConsoleApp;
 };
 
 struct StolenGMenuFile {
 	char title[200];
 	char exec[200];
+	char params[600];
+	int isConsoleApp;
 };
 
 struct Favorite {
@@ -186,12 +179,14 @@ struct Favorite {
 	char emulatorFolder[200];
 	char executable[200];
 	char filesDirectory[400];
+	int isConsoleApp;
 };
 
 struct Rom {
 	char *name;
 	char *alias;
 	char *directory;
+	int isConsoleApp;
 };
 
 struct Node  {
@@ -208,7 +203,7 @@ struct SectionGroup {
 };
 
 struct MenuSection {
-	char sectionName[25];
+	char sectionName[250];
 	char *emulatorDirectories[10];
 	char *executables[10];
 	char filesDirectories[400];
@@ -227,12 +222,13 @@ struct MenuSection {
 	int gameCount;
 	int initialized;
 	int onlyFileNamesNoExtension;
-	int headerAndFooterBackgroundColor[3];
-	int headerAndFooterTextColor[3];
+	int fullScreenMenuBackgroundColor[3];
+	int fullscreenMenuItemsColor[3];
 	int bodyBackgroundColor[3];
-	int bodyTextColor[3];
+	int menuItemsFontColor[3];
 	int bodySelectedTextBackgroundColor[3];
 	int bodySelectedTextTextColor[3];
+	int pictureTextColor[3];
 	struct Node* currentGameNode;
 	struct Node *head;
 	struct Node *tail;
@@ -254,7 +250,7 @@ extern struct Favorite favorites[2000];
 
 /* CONTROL */
 extern uint8_t *keys;
-//extern SDL_Joystick *joystick;
+extern SDL_Joystick *joystick;
 extern int BTN_Y;
 extern int BTN_B;
 extern int BTN_A;
@@ -271,7 +267,7 @@ extern int BTN_R1;
 extern int BTN_L2;
 extern int BTN_R2;
 
-#if defined TARGET_RG350 || defined TARGET_RG350_BETA
+#if defined TARGET_OD || defined TARGET_OD_BETA
 extern Shake_Device *device;
 extern Shake_Effect effect;
 extern int effect_id;
@@ -283,6 +279,8 @@ extern int effect_id1;
 extern int MAGIC_NUMBER;
 extern int SCREEN_HEIGHT;
 extern int SCREEN_WIDTH;
+extern int HDMI_WIDTH;
+extern int HDMI_HEIGHT;
 extern double SCREEN_RATIO;
 extern int hdmiEnabled;
 

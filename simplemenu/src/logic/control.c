@@ -5,7 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#if defined TARGET_RG350 || defined TARGET_RG350_BETA
+#if defined TARGET_OD || defined TARGET_OD_BETA
 #include <shake.h>
 #endif
 
@@ -98,71 +98,72 @@ void scrollToGame(int gameNumber) {
 }
 
 int advanceSection(int showLogo) {
-	logMessage("INFO","Advancing section");
+	int tempCurrentSection = currentSectionNumber;
 	if(currentSectionNumber==favoritesSectionNumber) {
 		return 0;
 	}
-	if(currentSectionNumber!=favoritesSectionNumber&&currentSectionNumber<favoritesSectionNumber-1) {
+	int returnValue = 0;
+	do {
+		returnValue = 0;
 		currentSectionNumber++;
-	} else if (currentSectionNumber!=favoritesSectionNumber) {
-		currentSectionNumber=0;
-	}
+		if (currentSectionNumber==menuSectionCounter-1) {
+			currentSectionNumber=0;
+		}
+		CURRENT_SECTION.gameCount=theSectionHasGames(&CURRENT_SECTION);
+		if (tempCurrentSection==currentSectionNumber) {
+			returnValue = 0;
+			break;
+		} else if (CURRENT_SECTION.gameCount>0) {
+			returnValue = 1;
+			break;
+		}
+	} while(1);
 	if (CURRENT_SECTION.systemLogoSurface == NULL) {
-		logMessage("INFO",CURRENT_SECTION.sectionName);
-		logMessage("INFO","advanceSection - Loading system logo");
 		CURRENT_SECTION.systemLogoSurface = IMG_Load(CURRENT_SECTION.systemLogo);
 		resizeSectionSystemLogo(&CURRENT_SECTION);
 	}
-	#ifndef TARGET_BITTBOY
+//	#ifdef TARGET_BITTBOY
 	if ((fullscreenMode||showLogo)&&currentSectionNumber!=favoritesSectionNumber) {
-		currentlySectionSwitching=1;
-		displayBackgroundPicture();
-		logMessage("INFO","Displaying system logo");
-		showConsole();
-		refreshScreen();
+//		displayBackgroundPicture();
+//		showConsole();
+//		refreshScreen();
+//		displayLogo=1;
 	}
-	#else
-	if ((fullscreenMode||showLogo)&&currentSectionNumber!=favoritesSectionNumber) {
-		displayBackgroundPicture();
-		showConsole();
-		refreshScreen();
-	}
-	#endif
-	return 1;
+//	#endif
+	return returnValue;
 }
 
 int rewindSection(int showLogo) {
-	logMessage("INFO","Rewinding section");
-	if(currentSectionNumber!=favoritesSectionNumber&&currentSectionNumber>0) {
-		currentSectionNumber--;
-	} else if (currentSectionNumber!=favoritesSectionNumber) {
-		currentSectionNumber=menuSectionCounter-2;
+	int returnValue;
+	int tempCurrentSection = currentSectionNumber;
+	if(currentSectionNumber==favoritesSectionNumber) {
+		return 0;
 	}
+	logMessage("INFO","Rewinding section");
+	do {
+		currentSectionNumber--;
+		if (currentSectionNumber==-1) {
+			currentSectionNumber=menuSectionCounter-2;
+		}
+		CURRENT_SECTION.gameCount=theSectionHasGames(&CURRENT_SECTION);
+		if (tempCurrentSection==currentSectionNumber) {
+			returnValue = 0;
+			break;
+		} else if (CURRENT_SECTION.gameCount>0) {
+			returnValue = 1;
+			break;
+		}
+	} while(1);
 	if (CURRENT_SECTION.systemLogoSurface == NULL) {
-		logMessage("INFO",CURRENT_SECTION.sectionName);
-		logMessage("INFO","rewindSection - Loading system logo");
 		CURRENT_SECTION.systemLogoSurface = IMG_Load(CURRENT_SECTION.systemLogo);
 		resizeSectionSystemLogo(&CURRENT_SECTION);
 	}
-	#ifndef TARGET_BITTBOY
+//	#ifdef TARGET_BITTBOY
 	if ((fullscreenMode||showLogo)&&currentSectionNumber!=favoritesSectionNumber) {
-		currentlySectionSwitching=1;
-		displayBackgroundPicture();
-		logMessage("INFO","Displaying system logo");
-		showConsole();
-		refreshScreen();
+//		showConsole();
 	}
-	#else
-	if ((fullscreenMode||showLogo)&&currentSectionNumber!=favoritesSectionNumber) {
-		displayBackgroundPicture();
-		showConsole();
-		refreshScreen();
-	}
-	#endif
-	if(currentSectionNumber!=favoritesSectionNumber) {
-		return 1;
-	}
-	return 0;
+//	#endif
+	return returnValue;
 }
 
 void launchGame(struct Rom *rom) {
@@ -172,7 +173,7 @@ void launchGame(struct Rom *rom) {
 
 	char tempExecDirPlusFileName[3000];
 	char tempExecFile[3000];
-
+	printf(" \n");
 	if (favoritesSectionSelected && favoritesSize > 0) {
 		struct Favorite favorite = favorites[CURRENT_GAME_NUMBER];
 		strcpy(tempExec,favorite.emulatorFolder);
@@ -185,7 +186,7 @@ void launchGame(struct Rom *rom) {
 			return;
 		}
 		#ifndef TARGET_PC
-		executeCommand(favorite.emulatorFolder,favorite.executable,favorite.name);
+		executeCommand(favorite.emulatorFolder,favorite.executable,favorite.name, favorite.isConsoleApp);
 		#else
 		executeCommandPC(favorite.executable,favorite.name);
 		#endif
@@ -205,7 +206,7 @@ void launchGame(struct Rom *rom) {
 		}
 		if (CURRENT_SECTION.onlyFileNamesNoExtension) {
 			#ifndef TARGET_PC
-			executeCommand(CURRENT_SECTION.emulatorDirectories[CURRENT_SECTION.activeEmulatorDirectory], CURRENT_SECTION.executables[CURRENT_SECTION.activeExecutable],getGameName(rom->name));
+			executeCommand(CURRENT_SECTION.emulatorDirectories[CURRENT_SECTION.activeEmulatorDirectory], CURRENT_SECTION.executables[CURRENT_SECTION.activeExecutable],getGameName(rom->name), rom->isConsoleApp);
 			#else
 			executeCommandPC(CURRENT_SECTION.executables[CURRENT_SECTION.activeExecutable],getGameName(rom->name));
 			#endif
@@ -213,7 +214,7 @@ void launchGame(struct Rom *rom) {
 			#ifdef TARGET_PC
 			executeCommandPC(CURRENT_SECTION.executables[CURRENT_SECTION.activeExecutable],rom->name);
 			#else
-			executeCommand(CURRENT_SECTION.emulatorDirectories[CURRENT_SECTION.activeEmulatorDirectory], CURRENT_SECTION.executables[CURRENT_SECTION.activeExecutable],rom->name);
+			executeCommand(CURRENT_SECTION.emulatorDirectories[CURRENT_SECTION.activeEmulatorDirectory], CURRENT_SECTION.executables[CURRENT_SECTION.activeExecutable],rom->name, rom->isConsoleApp);
 			#endif
 		}
 	}
@@ -223,13 +224,13 @@ void launchEmulator(struct Rom *rom) {
 	if (favoritesSectionSelected && favoritesSize > 0) {
 		struct Favorite favorite = favorites[CURRENT_GAME_NUMBER];
 		#ifndef TARGET_PC
-		executeCommand(favorite.emulatorFolder,favorite.executable,"*");
+		executeCommand(favorite.emulatorFolder,favorite.executable,"*", favorite.isConsoleApp);
 		#else
 		executeCommandPC(favorite.executable,"*");
 		#endif
 	} else if (rom->name!=NULL) {
 		#ifndef TARGET_PC
-		executeCommand(CURRENT_SECTION.emulatorDirectories[CURRENT_SECTION.activeEmulatorDirectory], CURRENT_SECTION.executables[CURRENT_SECTION.activeExecutable],"*");
+		executeCommand(CURRENT_SECTION.emulatorDirectories[CURRENT_SECTION.activeEmulatorDirectory], CURRENT_SECTION.executables[CURRENT_SECTION.activeExecutable],"*", 0);
 		#else
 		executeCommandPC(CURRENT_SECTION.executables[CURRENT_SECTION.activeExecutable],"*");
 		#endif
@@ -349,21 +350,16 @@ void showOrHideFavorites() {
 		}
 		if (returnTo==0) {
 			if (fullscreenMode) {
-				currentlySectionSwitching=1;
+				currentState=SELECTING_SECTION;
 				resetPicModeHideLogoTimer();
-				currentlySectionSwitching=1;
-				displayBackgroundPicture();
 				logMessage("INFO","Displaying system logo");
-				showConsole();
 			}
 			determineStartingScreen(menuSectionCounter);
 		} else {
 			if (fullscreenMode) {
-				currentlySectionSwitching=1;
+				currentState=SELECTING_SECTION;
 				resetPicModeHideLogoTimer();
-				displayBackgroundPicture();
 				logMessage("INFO","Displaying system logo");
-				showConsole();
 			}
 			loadGameList(0);
 		}
@@ -391,11 +387,8 @@ void showOrHideFavorites() {
 	}
 	if (fullscreenMode) {
 		resetPicModeHideLogoTimer();
-		currentlySectionSwitching=1;
-		displayBackgroundPicture();
+		currentState = SELECTING_SECTION;
 		logMessage("INFO","Displaying system logo");
-		showConsole();
-		refreshScreen();
 	}
 	loadFavoritesSectionGameList();
 }
@@ -403,7 +396,7 @@ void showOrHideFavorites() {
 void removeFavorite() {
 	favoritesChanged=1;
 	if (favoritesSize>0) {
-		#if defined TARGET_RG350 || defined TARGET_RG350_BETA
+		#if defined TARGET_OD || defined TARGET_OD_BETA
 		Shake_Play(device, effect_id1);
 		#endif	
 		for (int i=CURRENT_GAME_NUMBER;i<favoritesSize;i++) {
@@ -413,6 +406,7 @@ void removeFavorite() {
 			strcpy(favorites[i].filesDirectory,favorites[i+1].filesDirectory);
 			strcpy(favorites[i].name,favorites[i+1].name);
 			strcpy(favorites[i].alias,favorites[i+1].alias);
+			favorites[i].isConsoleApp = favorites[i+1].isConsoleApp;
 		}
 		strcpy(favorites[favoritesSize-1].section,"\0");
 		strcpy(favorites[favoritesSize-1].emulatorFolder,"\0");
@@ -420,6 +414,7 @@ void removeFavorite() {
 		strcpy(favorites[favoritesSize-1].filesDirectory,"\0");
 		strcpy(favorites[favoritesSize-1].name,"\0");
 		strcpy(favorites[favoritesSize-1].alias,"\0");
+		favorites[favoritesSize-1].isConsoleApp = 0;
 		favoritesSize--;
 		if (CURRENT_GAME_NUMBER==favoritesSize) {
 			FAVORITES_SECTION.realCurrentGameNumber--;
@@ -457,7 +452,7 @@ void markAsFavorite(struct Rom *rom) {
 	if (favoritesSize<FAVORITES_SIZE) {
 		if (!doesFavoriteExist(rom->name)) {
 			resetHideHeartTimer();
-			#if defined TARGET_RG350 || defined TARGET_RG350_BETA
+			#if defined TARGET_OD || defined TARGET_OD_BETA
 			Shake_Play(device, effect_id);
 			msleep(200);
 			Shake_Play(device, effect_id);
@@ -466,7 +461,6 @@ void markAsFavorite(struct Rom *rom) {
 				strcpy(favorites[favoritesSize].name, getGameName(rom->name));
 			} else {
 				strcpy(favorites[favoritesSize].name, rom->name);
-//				printf("%s\n", favorites[favoritesSize].name);
 			}
 			if(rom->alias!=NULL&&strlen(rom->alias)>2) {
 				strcpy(favorites[favoritesSize].alias, rom->alias);
@@ -477,6 +471,7 @@ void markAsFavorite(struct Rom *rom) {
 			strcpy(favorites[favoritesSize].emulatorFolder,CURRENT_SECTION.emulatorDirectories[CURRENT_SECTION.activeEmulatorDirectory]);
 			strcpy(favorites[favoritesSize].executable,CURRENT_SECTION.executables[CURRENT_SECTION.activeExecutable]);
 			strcpy(favorites[favoritesSize].filesDirectory,rom->directory);
+			favorites[favoritesSize].isConsoleApp = rom->isConsoleApp;
 			favoritesSize++;
 			qsort(favorites, favoritesSize, sizeof(struct Favorite), compareFavorites);
 		}
@@ -490,7 +485,7 @@ int isSelectPressed() {
 void performGroupChoosingAction() {
 	int existed = 0;
 	if (keys[BTN_START]) {
-		currentlyChoosing=3;
+		currentState=SETTINGS_SCREEN;
 //		pthread_create(&clockThread, NULL, updateClock,NULL);
 		return;
 	}
@@ -549,9 +544,9 @@ void performGroupChoosingAction() {
 					}
 				}
 			}
-			if (currentlyChoosing) {
+			if (currentState!=BROWSING_GAME_LIST) {
 				loadSections(sectionGroups[activeGroup].groupPath);
-				currentlyChoosing=0;
+				currentState=BROWSING_GAME_LIST;
 				currentSectionNumber=0;
 				for(int i=0;i<menuSectionCounter;i++) {
 					menuSections[i].initialized=0;
@@ -566,6 +561,8 @@ void performGroupChoosingAction() {
 							currentSectionNumber=sectionCount;
 							logMessage("INFO","performGroupChoosingAction - Loading system logo");
 							CURRENT_SECTION.systemLogoSurface = IMG_Load(CURRENT_SECTION.systemLogo);
+							drawLoadingText();
+							refreshScreen();
 							resizeSectionSystemLogo(&CURRENT_SECTION);
 							logMessage("INFO","Loading system background");
 							CURRENT_SECTION.backgroundSurface = IMG_Load(CURRENT_SECTION.background);
@@ -587,6 +584,8 @@ void performGroupChoosingAction() {
 				loadGameList(0);
 			}
 			if (!existed) {
+				drawLoadingText();
+				refreshScreen();
 				logMessage("INFO","performGroupChoosingAction !existed - Loading system logo");
 				CURRENT_SECTION.systemLogoSurface = IMG_Load(CURRENT_SECTION.systemLogo);
 				resizeSectionSystemLogo(&CURRENT_SECTION);
@@ -596,9 +595,13 @@ void performGroupChoosingAction() {
 				CURRENT_SECTION.systemPictureSurface = IMG_Load(CURRENT_SECTION.systemPicture);
 				resizeSectionSystemPicture(&CURRENT_SECTION);
 			}
+			if (CURRENT_SECTION.gameCount==0) {
+				advanceSection(0);
+				loadGameList(0);
+			}
 		} else {
 			activeGroup = beforeTryingToSwitchGroup;
-			currentlyChoosing=0;
+			currentState=BROWSING_GAME_LIST;
 		}
 	}
 }
@@ -608,17 +611,17 @@ void performSettingsChoosingAction() {
 		if(chosenSetting>0) {
 			chosenSetting--;
 		} else {
-			#if defined TARGET_RG300 || defined TARGET_RG350 || defined TARGET_RG350_BETA || defined TARGET_PC
-			chosenSetting=9;
-			#else
+			#if defined TARGET_RFW || defined TARGET_OD || defined TARGET_OD_BETA || defined TARGET_PC
 			chosenSetting=8;
+			#else
+			chosenSetting=7;
 			#endif
 		}
 	} else if (keys[BTN_DOWN]) {
-		#if defined TARGET_RG300 || defined TARGET_RG350 || defined TARGET_RG350_BETA || defined TARGET_PC
-		if(chosenSetting<9) {
-		#else
+		#if defined TARGET_RFW || defined TARGET_OD || defined TARGET_OD_BETA || defined TARGET_PC
 		if(chosenSetting<8) {
+		#else
+		if(chosenSetting<7) {
 		#endif
 			chosenSetting++;
 		} else {
@@ -628,7 +631,7 @@ void performSettingsChoosingAction() {
 		if (chosenSetting==TIDY_ROMS_OPTION) {
 			stripGames=1+stripGames*-1;
 		}
-		#if defined TARGET_RG350 || defined TARGET_RG350_BETA || TARGET_PC
+		#if defined TARGET_OD || defined TARGET_OD_BETA || TARGET_PC
 		else if (chosenSetting==USB_OPTION) {
 			hdmiChanged=1+hdmiChanged*-1;
 		}
@@ -667,6 +670,8 @@ void performSettingsChoosingAction() {
 		} else if (chosenSetting==FULL_SCREEN_MENU_OPTION) {
 			menuVisibleInFullscreenMode=1+menuVisibleInFullscreenMode*-1;
 		} else if (chosenSetting==THEME_OPTION) {
+			drawLoadingText();
+			refreshScreen();
 			if (keys[BTN_LEFT]) {
 				if (activeTheme>0) {
 					activeTheme--;
@@ -687,97 +692,17 @@ void performSettingsChoosingAction() {
 			loadSectionGroups();
 			free(temp);
 			currentMode=3;
-			MENU_ITEMS_PER_PAGE=itemsInCustom;
-			FULLSCREEN_ITEMS_PER_PAGE=itemsInFullCustom;
-		} else if (chosenSetting==ITEMS_PER_PAGE_OPTION) {
-			if (keys[BTN_LEFT]) {
-				int items = 0;
-				while (items == 0) {
-					if (currentMode==0) {
-						items = itemsInCustom;
-						MENU_ITEMS_PER_PAGE=itemsInCustom;
-						FULLSCREEN_ITEMS_PER_PAGE=itemsInFullCustom;
-						currentMode=3;
-					} else if (currentMode==3) {
-						items = itemsInDrunkenMonkey;
-						MENU_ITEMS_PER_PAGE=itemsInDrunkenMonkey;
-						FULLSCREEN_ITEMS_PER_PAGE=itemsInFullDrunkenMonkey;
-						currentMode=2;
-					} else if (currentMode==2) {
-						items = itemsInTraditional;
-						MENU_ITEMS_PER_PAGE=itemsInTraditional;
-						FULLSCREEN_ITEMS_PER_PAGE=itemsInFullTraditional;
-						currentMode=1;
-					} else {
-						items = itemsInSimple;
-						MENU_ITEMS_PER_PAGE=itemsInSimple;
-						FULLSCREEN_ITEMS_PER_PAGE=itemsInFullSimple;
-						currentMode=0;
-						break;
-					}
-				}
-			}
-			if (keys[BTN_RIGHT]) {
-				int items = 0;
-				while (items == 0) {
-					if (currentMode==2) {
-						items = itemsInCustom;
-						MENU_ITEMS_PER_PAGE=itemsInCustom;
-						FULLSCREEN_ITEMS_PER_PAGE=itemsInFullCustom;
-						currentMode=3;
-					} else if (currentMode==1) {
-						items = itemsInDrunkenMonkey;
-						MENU_ITEMS_PER_PAGE=itemsInDrunkenMonkey;
-						FULLSCREEN_ITEMS_PER_PAGE=itemsInFullDrunkenMonkey;
-						currentMode=2;
-					} else if (currentMode==0) {
-						items = itemsInTraditional;
-						MENU_ITEMS_PER_PAGE=itemsInTraditional;
-						FULLSCREEN_ITEMS_PER_PAGE=itemsInFullTraditional;
-						currentMode=1;
-					} else {
-						items = itemsInSimple;
-						MENU_ITEMS_PER_PAGE=itemsInSimple;
-						FULLSCREEN_ITEMS_PER_PAGE=itemsInFullSimple;
-						currentMode=0;
-						break;
-					}
-				}
-			}
-			char *temp=malloc(8000);
-			strcpy(temp,themes[activeTheme]);
-			strcat(temp,"/theme.ini");
-			loadTheme(temp);
-			loadSectionGroups();
-			free(temp);
-			switch (currentMode)
-			{
-		    	case 0:
-		    		fontSize=baseFont;
-		    		break;
-			    case 1:
-			    	fontSize=baseFont-2;
-			    	break;
-			    case 2:
-			    	fontSize=baseFont-4;
-			    	break;
-			    default:
-			    	fontSize=fontSizeCustom;
-			}
-			if(fullscreenMode==0) {
-				ITEMS_PER_PAGE=MENU_ITEMS_PER_PAGE;
-			} else {
-				ITEMS_PER_PAGE=FULLSCREEN_ITEMS_PER_PAGE;
-			}
+			MENU_ITEMS_PER_PAGE=itemsPerPage;
+			FULLSCREEN_ITEMS_PER_PAGE=itemsPerPageFullscreen;
 		} else if (chosenSetting==SCREEN_TIMEOUT_OPTION) {
 			if(!hdmiEnabled) {
 				if (keys[BTN_LEFT]) {
 					if (timeoutValue>0) {
-						timeoutValue--;
+						timeoutValue-=5;
 					}
 				} else {
 					if (timeoutValue<60) {
-						timeoutValue++;
+						timeoutValue+=5;
 					}
 				}
 			}
@@ -787,26 +712,26 @@ void performSettingsChoosingAction() {
 				#ifdef TARGET_BITTBOY
 				snprintf(command,sizeof(command),"rm /mnt/autoexec.sh;mv /mnt/autoexec.sh.bck /mnt/autoexec.sh");
 				#endif
-				#ifdef TARGET_RG300
+				#ifdef TARGET_RFW
 				snprintf(command,sizeof(command),"rm /home/retrofw/autoexec.sh;mv /home/retrofw/autoexec.sh.bck /home/retrofw/autoexec.sh");
 				#endif
-				#if defined TARGET_RG350 || defined TARGET_NPG
+				#if defined TARGET_OD || defined TARGET_NPG
 				snprintf(command,sizeof(command),"rm /usr/local/sbin/frontend_start;mv /usr/local/sbin/frontend_start.bck /usr/local/sbin/frontend_start");
 				#endif
-				#if defined TARGET_RG350_BETA
+				#if defined TARGET_OD_BETA
 				snprintf(command,sizeof(command),"rm /media/data/local/home/.autostart");
 				#endif
 			} else {
 				#ifdef TARGET_BITTBOY
 				snprintf(command,sizeof(command),"mv /mnt/autoexec.sh /mnt/autoexec.sh.bck;cp scripts/autoexec.sh /mnt");
 				#endif
-				#ifdef TARGET_RG300
+				#ifdef TARGET_RFW
 				snprintf(command,sizeof(command),"mv /home/retrofw/autoexec.sh /home/retrofw/autoexec.sh.bck;cp scripts/autoexec.sh /home/retrofw");
 				#endif
-				#if defined TARGET_RG350 || defined TARGET_NPG
+				#if defined TARGET_OD || defined TARGET_NPG
 				snprintf(command,sizeof(command),"mv /usr/local/sbin/frontend_start /usr/local/sbin/frontend_start.bck;cp scripts/frontend_start /usr/local/sbin/");
 				#endif
-				#if defined TARGET_RG350_BETA
+				#if defined TARGET_OD_BETA
 				snprintf(command,sizeof(command),"cp ./scripts/frontend_start /media/data/local/home/.autostart");
 				#endif
 			}
@@ -822,7 +747,7 @@ void performSettingsChoosingAction() {
 	} else if (chosenSetting==SHUTDOWN_OPTION&&keys[BTN_A]) {
 		running=0;
 	}
-	#if defined TARGET_RG300
+	#if defined TARGET_RFW
 	else if (chosenSetting==USB_OPTION&&keys[BTN_A]) {
 		hotKeyPressed=0;
 		int returnedValue = system("./scripts/usb_mode_on.sh>/home/retrofw/apps/test.txt");
@@ -831,12 +756,12 @@ void performSettingsChoosingAction() {
 		} else {
 			generateError("USB MODE  NOT AVAILABLE",0);
 		}
-		currentlyChoosing=0;
+		currentState=BROWSING_GAME_LIST;
 	}
 	#endif
 	else if (keys[BTN_START]) {
 //		pthread_cancel(clockThread);
-		#if defined TARGET_RG350 || defined TARGET_RG350_BETA
+		#if defined TARGET_OD || defined TARGET_OD_BETA
 		if (hdmiChanged!=hdmiEnabled) {
 			FILE *fp = fopen("/sys/class/hdmi/hdmi","w");
 			if (fp!=NULL) {
@@ -852,12 +777,17 @@ void performSettingsChoosingAction() {
 			execlp("./simplemenu","invoker",NULL);
 		}
 		#endif
-		currentlyChoosing=0;
-//		char *temp=malloc(8000);
-//		strcpy(temp,themes[activeTheme]);
-//		strcat(temp,"/theme.ini");
-//		loadTheme(temp);
-//		free(temp);
+		currentState=BROWSING_GAME_LIST;
+		int headerAndFooterBackground[3]={37,50,56};
+		drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance(22), 0, SCREEN_HEIGHT-calculateProportionalSizeOrDistance(22), headerAndFooterBackground);
+		if (CURRENT_SECTION.backgroundSurface==NULL) {
+			logMessage("INFO","Loading system background");
+			CURRENT_SECTION.backgroundSurface = IMG_Load(CURRENT_SECTION.background);
+			resizeSectionBackground(&CURRENT_SECTION);
+			logMessage("INFO","Loading system picture");
+			CURRENT_SECTION.systemPictureSurface = IMG_Load(CURRENT_SECTION.systemPicture);
+			resizeSectionSystemPicture(&CURRENT_SECTION);
+		}
 		if(fullscreenMode==0) {
 			ITEMS_PER_PAGE=MENU_ITEMS_PER_PAGE;
 		} else {
@@ -898,8 +828,8 @@ void performChoosingAction() {
 		return;
 	}
 	if (keys[BTN_A]) {
-		if (currentlyChoosing) {
-			currentlyChoosing=0;
+		if (currentState!=BROWSING_GAME_LIST) {
+			currentState=BROWSING_GAME_LIST;
 			return;
 		}
 	}
