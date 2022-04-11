@@ -1,4 +1,4 @@
-consoles="/media/data/local/home/.simplemenu/section_groups/consoles.ini"
+onsoles="/media/data/local/home/.simplemenu/section_groups/consoles.ini"
 
 echo "[CONSOLES]" > "${consoles}"
 echo "consoleList = NES,SNES,MASTER SYSTEM,SEGA GENESIS,SEGA CD,SEGA 32X,PLAYSTATION,NEO-GEO,TURBOGRAFX-16,TURBOGRAFX-CD,ATARI 2600,ATARI 7800" >> "${consoles}"

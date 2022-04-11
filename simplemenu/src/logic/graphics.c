@@ -123,29 +123,29 @@ int genericDrawTextOnScreen(TTF_Font *font, TTF_Font *outline, int x, int y, cha
 
 	int retW = 1;
 
-	TTF_SizeText(font, (const char *) buf, &retW, NULL);
+    TTF_SizeUTF8(font, (const char *) buf, &retW, NULL);
 
 	while (retW>width) {
 		bufCopy[len]='\0';
 		char *bufCopy1=strdup(bufCopy);
 		len--;
-		TTF_SizeText(font, (const char *) bufCopy1, &retW, NULL);
+        TTF_SizeUTF8(font, (const char *) bufCopy1, &retW, NULL);
 		free(bufCopy1);
 	}
 
 	if (shaded) {
 		if (currentState==BROWSING_GAME_LIST  && outline != NULL && fontOutline > 0) {
-			msg1 = TTF_RenderText_Shaded(outline, bufCopy, make_color(50,50,50), make_color(backgroundColor[0], backgroundColor[1], backgroundColor[2]));
-			msg = TTF_RenderText_Solid(font, bufCopy, make_color(txtColor[0], txtColor[1], txtColor[2]));
+			msg1 = TTF_RenderUTF8_Shaded(outline, bufCopy, make_color(50,50,50), make_color(backgroundColor[0], backgroundColor[1], backgroundColor[2]));
+			msg = TTF_RenderUTF8_Solid(font, bufCopy, make_color(txtColor[0], txtColor[1], txtColor[2]));
 		} else {
-			msg = TTF_RenderText_Shaded(font, bufCopy, make_color(txtColor[0], txtColor[1], txtColor[2]), make_color(backgroundColor[0], backgroundColor[1], backgroundColor[2]));
+			msg = TTF_RenderUTF8_Shaded(font, bufCopy, make_color(txtColor[0], txtColor[1], txtColor[2]), make_color(backgroundColor[0], backgroundColor[1], backgroundColor[2]));
 		}
 	} else {
 		if (currentState==BROWSING_GAME_LIST && outline != NULL && fontOutline > 0) {
-			msg1 = TTF_RenderText_Blended(outline, bufCopy, make_color(50, 50, 50));
-			msg = TTF_RenderText_Solid(font, bufCopy, make_color(txtColor[0], txtColor[1], txtColor[2]));
+			msg1 = TTF_RenderUTF8_Blended(outline, bufCopy, make_color(50, 50, 50));
+			msg = TTF_RenderUTF8_Solid(font, bufCopy, make_color(txtColor[0], txtColor[1], txtColor[2]));
 		} else {
-			msg = TTF_RenderText_Blended(font, bufCopy, make_color(txtColor[0], txtColor[1], txtColor[2]));
+			msg = TTF_RenderUTF8_Blended(font, bufCopy, make_color(txtColor[0], txtColor[1], txtColor[2]));
 		}
 	}
 
@@ -203,14 +203,14 @@ void genericDrawMultiLineTextOnScreen(TTF_Font *font, TTF_Font *outline, int x, 
 			if (printCounter>0) {
 				SDL_FreeSurface(msg);
 			}
-			msg = TTF_RenderText_Blended(font, test, make_color(txtColor[0], txtColor[1], txtColor[2]));
+			msg = TTF_RenderUTF8_Blended(font, test, make_color(txtColor[0], txtColor[1], txtColor[2]));
 			while (msg->w<=maxWidth&&printCounter<wordCounter) {
 				printCounter++;
 				if (strcmp(wordsInBuf[printCounter],"-")!=0) {
 					strcat(test," ");
 					strcat(test,wordsInBuf[printCounter]);
 					SDL_FreeSurface(msg);
-					msg = TTF_RenderText_Blended(font, test, make_color(txtColor[0], txtColor[1], txtColor[2]));
+					msg = TTF_RenderUTF8_Blended(font, test, make_color(txtColor[0], txtColor[1], txtColor[2]));
 				} else {
 					printCounter++;
 					break;
@@ -238,7 +238,7 @@ void genericDrawMultiLineTextOnScreen(TTF_Font *font, TTF_Font *outline, int x, 
 		}
 
 	} else {
-		msg = TTF_RenderText_Blended(font, buf, make_color(txtColor[0], txtColor[1], txtColor[2]));
+		msg = TTF_RenderUTF8_Blended(font, buf, make_color(txtColor[0], txtColor[1], txtColor[2]));
 		genericDrawTextOnScreen(font,outline,x,y,buf,txtColor,align,NULL,0);
 		free(wordsInBuf[0]);
 		SDL_FreeSurface(msg);
@@ -279,8 +279,8 @@ void drawCustomText1OnScreen(TTF_Font *font, TTF_Font *outline, int x, int y, co
 	strcpy(bufCopy,buf);
 	strcpy(bufCopy1,buf);
 	bufCopy1[1]='\0';
-	msg = TTF_RenderText_Blended(font, bufCopy, make_color(txtColor[0], txtColor[1], txtColor[2]));
-	msg1 = TTF_RenderText_Blended(outline, bufCopy, make_color(50,50,50));
+	msg = TTF_RenderUTF8_Blended(font, bufCopy, make_color(txtColor[0], txtColor[1], txtColor[2]));
+	msg1 = TTF_RenderUTF8_Blended(outline, bufCopy, make_color(50,50,50));
 	if (align & HAlignCenter) {
 		x -= msg->w / 2;
 	} else if (align & HAlignRight) {
