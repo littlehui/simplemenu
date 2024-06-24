@@ -12,8 +12,10 @@
 #endif
 SDL_Surface *screen;
 /* STATUS */
+int nullUpdate;
 int updateScreenFlag;
 int launchAtBoot;
+int alternateControls;
 char *errorMessage;
 int running;
 int itsStoppedBecauseOfAnError;
@@ -82,6 +84,7 @@ char mediaFolder[1000];
 int stripGames;
 int useCache;
 int shutDownEnabled;
+int overclockEnabled;
 int selectedShutDownOption;
 int footerVisibleInFullscreenMode;
 int menuVisibleInFullscreenMode;
@@ -89,6 +92,7 @@ int timeoutValue;
 int OC_UC;
 int OC_NO;
 int OC_OC;
+int OC_OC_HIGH;
 int OC_SLEEP;
 int backlightValue;
 int hdmiChanged;
@@ -113,11 +117,17 @@ int itemsPerPageFullscreen;
 int itemsSeparation;
 char textXFont[1000];
 char batt1[1000];
+SDL_Surface* surfaceBatt1;
 char batt2[1000];
+SDL_Surface* surfaceBatt2;
 char batt3[1000];
+SDL_Surface* surfaceBatt3;
 char batt4[1000];
+SDL_Surface* surfaceBatt4;
 char batt5[1000];
+SDL_Surface* surfaceBatt5;
 char battCharging[1000];
+SDL_Surface* surfaceBattCharging;
 int battX;
 int battY;
 int text1FontSize;
@@ -264,6 +274,7 @@ struct MenuSection {
 	char background[1000];
 	SDL_Surface *backgroundSurface;
 	int hasDirs;
+	char noArtPicture[4000];
 };
 
 struct SectionGroup sectionGroups[100];

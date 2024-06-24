@@ -16,45 +16,9 @@ else
     user_name="root";
 fi
 
-cd /home/bittboy/git/simplemenu/simplemenu/
-
-if [ "$1" = "OD" ]; then
-    make clean
-    make PLATFORM=OD
-elif [ "$1" = "OD-BETA" ]; then
-    make clean
-    make PLATFORM=OD-BETA
-elif [ "$1" = "PG2" ]; then
-    make clean
-    make PLATFORM=NPG
-elif [ "$1" = "RFW" ]; then
-    make clean
-    make PLATFORM=RFW
-fi
-
-cd /home/bittboy/git/invoker/invoker/
-
-if [ "$1" = "OD" ]; then
-    make clean
-    make PLATFORM=OD
-elif [ "$1" = "OD-BETA" ]; then
-    make clean
-    make PLATFORM=OD-BETA
-elif [ "$1" = "PG2" ]; then
-    make clean
-    make PLATFORM=NPG
-elif [ "$1" = "RFW" ]; then
-    make clean
-    make PLATFORM=RFW
-fi
-
-cp invoker.dge /home/bittboy/git/simplemenu/simplemenu/output
-
-cd /home/bittboy/git/simplemenu/simplemenu/output
-
 cat>default.${var}.desktop<<EOF
 [Desktop Entry]
-Name=SimpleMenu
+Name=SimpleMenu-10.3.2
 Comment=A simple launcher
 Exec=simplemenu
 Terminal=false
@@ -69,10 +33,10 @@ FLIST="$1/apps"
 FLIST="${FLIST} $1/config"
 FLIST="${FLIST} $1/games"
 FLIST="${FLIST} $1/scripts"
-FLIST="${FLIST} $1/section_groups"
-FLIST="${FLIST} $1/themes"
+#FLIST="${FLIST} $1/section_groups"
+#FLIST="${FLIST} $1/themes"
 FLIST="${FLIST} resources"
-FLIST="${FLIST} invoker.dge"
+FLIST="${FLIST} $1/invoker.dge"
 FLIST="${FLIST} simplemenu"
 FLIST="${FLIST} usb.png"
 FLIST="${FLIST} simplemenu.png"
@@ -91,7 +55,7 @@ if [ "$1" = 'OD' ] || [ "$1" = 'PG2' ] || [ "$1" = 'OD-BETA' ]; then
     while true; do
         read -p "Transfer?" yn
         case $yn in
-            [Yy]* ) scp SimpleMenu-${1}.opk $user_name@10.1.1.2:/media/sdcard/apps/SimpleMenu-${1}.opk; break;;
+            [Yy]* ) scp SimpleMenu-${1}.opk $user_name@10.1.1.2:/media/data/apps/SimpleMenu-${1}.opk; break;;
             [Nn]* ) exit;;
             * ) echo "Please answer yes or no.";;
         esac

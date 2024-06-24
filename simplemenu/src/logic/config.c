@@ -334,6 +334,7 @@ void loadTheme(char *theme) {
 
 		setThemeResourceValueInSection (themeConfig, menuSections[i].sectionName, "system", menuSections[i].systemPicture);
 		setThemeResourceValueInSection (themeConfig, menuSections[i].sectionName, "logo", menuSections[i].systemLogo);
+		setThemeResourceValueInSection (themeConfig, menuSections[i].sectionName, "no_art_picture", menuSections[i].noArtPicture);
 		setThemeResourceValueInSection (themeConfig, menuSections[i].sectionName, "background", menuSections[i].background);
 
 		value = ini_get(themeConfig, "GENERAL", "system_w");
@@ -361,13 +362,13 @@ void loadTheme(char *theme) {
 		if(i==currentSectionNumber) {
 			logMessage("INFO","loadTheme","Loading system logo");
 			menuSections[i].systemLogoSurface = IMG_Load(menuSections[i].systemLogo);
-			resizeSectionSystemLogo(&menuSections[i]);
+//			resizeSectionSystemLogo(&menuSections[i]);
 			logMessage("INFO","loadTheme","Loading system background");
 			menuSections[i].backgroundSurface = IMG_Load(menuSections[i].background);
-			resizeSectionBackground(&menuSections[i]);
+//			resizeSectionBackground(&menuSections[i]);
 			logMessage("INFO","loadTheme","Loading system picture");
 			menuSections[i].systemPictureSurface = IMG_Load(menuSections[i].systemPicture);
-			resizeSectionSystemPicture(&menuSections[i]);
+//			resizeSectionSystemPicture(&menuSections[i]);
 		}
 
 		setThemeResourceValueInSection (themeConfig, menuSections[i].sectionName, "system", menuSections[i].systemPicture);
@@ -476,6 +477,12 @@ void loadTheme(char *theme) {
 			setThemeResourceValueInSection (themeConfig, "GENERAL", "batt_4", batt4);
 			setThemeResourceValueInSection (themeConfig, "GENERAL", "batt_5", batt5);
 			setThemeResourceValueInSection (themeConfig, "GENERAL", "batt_charging", battCharging);
+			surfaceBatt1 = IMG_Load(batt1);
+			surfaceBatt2 = IMG_Load(batt2);
+			surfaceBatt3 = IMG_Load(batt3);
+			surfaceBatt4 = IMG_Load(batt4);
+			surfaceBatt5 = IMG_Load(batt5);
+			surfaceBattCharging = IMG_Load(battCharging);
 		}
 
 		setThemeResourceValueInSection (themeConfig, "GENERAL", "game_count_font", gameCountFont);
@@ -485,7 +492,7 @@ void loadTheme(char *theme) {
 		if (value!=NULL && atoi(value)==1) {
 			displayGameCount=1;
 			setThemeResourceValueInSection (themeConfig, "GENERAL", "game_count_font", gameCountFont);
-			strcpy (gameCountText, "# Games Available");
+			strcpy (gameCountText, "# 个游戏");
 			value = ini_get(themeConfig, "GENERAL", "game_count_text");
 			if(value!=NULL) {
 				strcpy (gameCountText, value);
@@ -516,6 +523,18 @@ void loadTheme(char *theme) {
 
 		value = ini_get(themeConfig, "GENERAL", "text2_alignment");
 		text2Alignment = atoifgl(value);
+
+		value = ini_get(themeConfig, "GENERAL", "text3_font_size");
+		text3FontSize = atoi (value);
+
+		value = ini_get(themeConfig, "GENERAL", "text3_x");
+		text3X = atoifgl(value);
+
+		value = ini_get(themeConfig, "GENERAL", "text3_y");
+		text3Y = atoifgl(value);
+
+		value = ini_get(themeConfig, "GENERAL", "text3_alignment");
+		text3Alignment = atoifgl(value);
 
 		value = ini_get(themeConfig, "GENERAL", "art_text_distance_from_picture");
 		artTextDistanceFromPicture = atoifgl(value);
@@ -704,7 +723,9 @@ void loadRomPreferences(struct Rom *rom) {
 	}
 	rom->preferences.emulatorDir=atoifgl(configurations[0]);
 	rom->preferences.emulator=atoifgl(configurations[1]);
-	rom->preferences.frequency=atoifgl(configurations[2]);
+	if (overclockEnabled) {
+        rom->preferences.frequency=atoifgl(configurations[2]);
+    }
 //	printf("%d - %d - %d\n", rom->preferences.emulatorDir, rom->preferences.emulator, rom->preferences.frequency);
 }
 
@@ -820,8 +841,21 @@ void loadConfig() {
 		enableLogging();
 	}
 
+    value = ini_get(config, "GENERAL", "overclock_enabled");
+
+    if (atoifgl(value)==1) {
+        overclockEnabled = 1;
+    }
+
 	value = ini_get(config, "GENERAL", "cache");
 	useCache = atoifgl(value);
+
+	value = ini_get(config, "GENERAL", "original_controls");
+	if(value!=NULL) {
+		alternateControls=atoifgl(value);
+	} else {
+		alternateControls=0;
+	}
 
 	value = ini_get(config, "CPU", "underclocked_speed");
 	OC_UC=atoifgl(value);
@@ -831,6 +865,9 @@ void loadConfig() {
 
 	value = ini_get(config, "CPU", "overclocked_speed");
 	OC_OC=atoifgl(value);
+
+	value = ini_get(config, "CPU", "overclocked_speed_high");
+	OC_OC_HIGH=atoifgl(value);
 
 	value = ini_get(config, "CPU", "sleep_speed");
 	OC_SLEEP=atoifgl(value);
@@ -946,26 +983,24 @@ void loadSectionGroups() {
 		if (strlen(sectionGroupsFolder)>1) {
 			strcpy(temp3,sectionGroupsFolder);
 		} else {
-			strcpy(temp3,sectionGroupPath);
-			strcat(temp3,"/");
+			strcpy(temp3,"\0");
 		}
 		strcat(temp3,temp1);
 		strcat(temp3,".png");
-
 		strcpy(sectionGroups[sectionGroupCounter].groupBackground, temp3);
 		logMessage("INFO","loadSectionGroups","Loading group background");
 		sectionGroups[sectionGroupCounter].groupBackgroundSurface=IMG_Load(sectionGroups[sectionGroupCounter].groupBackground);
 
-		if (sectionGroups[sectionGroupCounter].groupBackgroundSurface==NULL) {
-			strcpy(temp3,sectionGroupPath);
-			strcat(temp3,"/");
-			strcat(temp3,temp1);
-			strcat(temp3,".png");
-			strcpy(sectionGroups[sectionGroupCounter].groupBackground, temp3);
-			sectionGroups[sectionGroupCounter].groupBackgroundSurface=IMG_Load(sectionGroups[sectionGroupCounter].groupBackground);
-		}
+//		if (sectionGroups[sectionGroupCounter].groupBackgroundSurface==NULL) {
+//			strcpy(temp3,sectionGroupPath);
+//			strcat(temp3,"/");
+//			strcat(temp3,temp1);
+//			strcat(temp3,".png");
+//			strcpy(sectionGroups[sectionGroupCounter].groupBackground, temp3);
+//			sectionGroups[sectionGroupCounter].groupBackgroundSurface=IMG_Load(sectionGroups[sectionGroupCounter].groupBackground);
+//		}
 
-		resizeGroupBackground(&sectionGroups[sectionGroupCounter]);
+//		resizeGroupBackground(&sectionGroups[sectionGroupCounter]);
 
 		char *temp2 = toUpper(temp1);
 		strcpy(sectionGroups[sectionGroupCounter].groupName, temp2);
@@ -1084,6 +1119,7 @@ int loadSections(char *file) {
 		}
 		logMessage("INFO","loadSections","Setting logo, background and system");
 		setThemeResourceValueInSection (themeConfig, sectionName, "logo", menuSections[menuSectionCounter].systemLogo);
+		setThemeResourceValueInSection (themeConfig, sectionName, "no_art_picture", menuSections[menuSectionCounter].noArtPicture);
 		setThemeResourceValueInSection (themeConfig, sectionName, "background", menuSections[menuSectionCounter].background);
 		setThemeResourceValueInSection (themeConfig, sectionName, "system", menuSections[menuSectionCounter].systemPicture);
 
@@ -1096,13 +1132,13 @@ int loadSections(char *file) {
 		if (menuSectionCounter==currentSectionNumber) {
 			logMessage("INFO","loadSections","Loading system logo");
 			menuSections[menuSectionCounter].systemLogoSurface = IMG_Load(menuSections[menuSectionCounter].systemLogo);
-			resizeSectionSystemLogo(&menuSections[menuSectionCounter]);
+//			resizeSectionSystemLogo(&menuSections[menuSectionCounter]);
 			logMessage("INFO","loadSections","Loading system background");
 			menuSections[menuSectionCounter].backgroundSurface = IMG_Load(menuSections[menuSectionCounter].background);
-			resizeSectionBackground(&menuSections[menuSectionCounter]);
+//			resizeSectionBackground(&menuSections[menuSectionCounter]);
 			logMessage("INFO","loadSections","Loading system picture");
 			menuSections[menuSectionCounter].systemPictureSurface = IMG_Load(menuSections[menuSectionCounter].systemPicture);
-			resizeSectionSystemPicture(&menuSections[menuSectionCounter]);
+//			resizeSectionSystemPicture(&menuSections[menuSectionCounter]);
 		}
 
 		logMessage("INFO","loadSections","Set");
@@ -1238,6 +1274,12 @@ int loadSections(char *file) {
 		setThemeResourceValueInSection (themeConfig, "GENERAL", "batt_4", batt4);
 		setThemeResourceValueInSection (themeConfig, "GENERAL", "batt_5", batt5);
 		setThemeResourceValueInSection (themeConfig, "GENERAL", "batt_charging", battCharging);
+		surfaceBatt1 = IMG_Load(batt1);
+		surfaceBatt2 = IMG_Load(batt2);
+		surfaceBatt3 = IMG_Load(batt3);
+		surfaceBatt4 = IMG_Load(batt4);
+		surfaceBatt5 = IMG_Load(batt5);
+		surfaceBattCharging = IMG_Load(battCharging);
 	}
 
 	value = ini_get(themeConfig, "GENERAL", "display_game_count");
@@ -1245,7 +1287,7 @@ int loadSections(char *file) {
 	if (value!=NULL && atoi(value)==1) {
 		displayGameCount=1;
 		setThemeResourceValueInSection (themeConfig, "GENERAL", "game_count_font", gameCountFont);
-		strcpy (gameCountText, "# Games Available");
+		strcpy (gameCountText, "# 个游戏");
 		value = ini_get(themeConfig, "GENERAL", "game_count_text");
 		if(value!=NULL) {
 			strcpy (gameCountText, value);
@@ -1277,6 +1319,19 @@ int loadSections(char *file) {
 
 	value = ini_get(themeConfig, "GENERAL", "text2_alignment");
 	text2Alignment = atoifgl(value);
+
+    value = ini_get(themeConfig, "GENERAL", "text3_font_size");
+	text3FontSize = atoi (value);
+
+	value = ini_get(themeConfig, "GENERAL", "text3_x");
+	text3X = atoifgl(value);
+
+	value = ini_get(themeConfig, "GENERAL", "text3_y");
+	text3Y = atoifgl(value);
+
+	value = ini_get(themeConfig, "GENERAL", "text3_alignment");
+	text3Alignment = atoifgl(value);
+
 
 	value = ini_get(themeConfig, "GENERAL", "art_text_distance_from_picture");
 	artTextDistanceFromPicture = atoifgl(value);
@@ -1336,6 +1391,7 @@ int loadSections(char *file) {
 
 	setThemeResourceValueInSection (themeConfig, "FAVORITES", "logo", menuSections[menuSectionCounter].systemLogo);
 	setThemeResourceValueInSection (themeConfig, "FAVORITES", "system", menuSections[menuSectionCounter].systemPicture);
+	setThemeResourceValueInSection (themeConfig, "FAVORITES", "no_art_picture", menuSections[menuSectionCounter].noArtPicture);
 	setThemeResourceValueInSection (themeConfig, "FAVORITES", "background", menuSections[menuSectionCounter].background);
 
 	logMessage("INFO","loadSections","Out 7");
@@ -1376,7 +1432,7 @@ void saveLastState() {
 	char pathToStatesFilePlusFileName[300];
 	snprintf(pathToStatesFilePlusFileName,sizeof(pathToStatesFilePlusFileName),"%s/.simplemenu/last_state.sav",home);
 	fp = fopen(pathToStatesFilePlusFileName, "w");
-	fprintf(fp, "%d;\n", 10);
+	fprintf(fp, "%d;\n", 102);
 	fprintf(fp, "%d;\n", stripGames);
 	fprintf(fp, "%d;\n", fullscreenMode);
 	fprintf(fp, "%d;\n", footerVisibleInFullscreenMode);
@@ -1439,7 +1495,7 @@ void loadLastState() {
 		}
 		if (savedVersion==-1) {
 			savedVersion=atoifgl(configurations[0]);
-			if(savedVersion!=10) {
+			if(savedVersion!=102) {
 				saveLastState();
 				fclose(fp);
 				if (line) {

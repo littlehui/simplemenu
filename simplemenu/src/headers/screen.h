@@ -25,4 +25,5 @@ void clearShutdownTimer();
 void resetShutdownTimer();
 void startBatteryTimer();
 void clearBatteryTimer();
+void displayTime();
 #endif

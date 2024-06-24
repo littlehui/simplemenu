@@ -4,6 +4,7 @@
 #include <string.h>
 #include <time.h>
 #include <ctype.h>
+#include <pthread.h>
 
 #include "../headers/constants.h"
 #include "../headers/definitions.h"
@@ -28,11 +29,11 @@ void displayBackgroundPicture() {
 
 
 void showErrorMessage(char *errorMessage) {
-	int width = ((calculateProportionalSizeOrDistance(strlen(errorMessage)))*(180)/calculateProportionalSizeOrDistance(18));
-	int height = calculateProportionalSizeOrDistance(40);
+	int width = ((calculateProportionalSizeOrDistance1(strlen(errorMessage)))*(180)/calculateProportionalSizeOrDistance1(18));
+	int height = calculateProportionalSizeOrDistance1(40);
 	if(strchr(errorMessage,'-')!=NULL) {
-		height = calculateProportionalSizeOrDistance(60);
-		width = ((calculateProportionalSizeOrDistance(strlen(errorMessage))/2*calculateProportionalSizeOrDistance(200))/calculateProportionalSizeOrDistance(18))+calculateProportionalSizeOrDistance(20);
+		height = calculateProportionalSizeOrDistance1(60);
+		width = ((calculateProportionalSizeOrDistance1(strlen(errorMessage))/2*calculateProportionalSizeOrDistance1(200))/calculateProportionalSizeOrDistance1(18))+calculateProportionalSizeOrDistance1(20);
 	}
 	int filling[3];
 	int borderColor[3];
@@ -43,7 +44,7 @@ void showErrorMessage(char *errorMessage) {
 	filling[1]=0;
 	filling[2]=0;
 	int textColor[3]={255, 255, 255};
-	drawRectangleToScreen(width+calculateProportionalSizeOrDistance(10), height+calculateProportionalSizeOrDistance(10), SCREEN_WIDTH/2-width/2-calculateProportionalSizeOrDistance(5),SCREEN_HEIGHT/2-height/2-calculateProportionalSizeOrDistance(5), borderColor);
+	drawRectangleToScreen(width+calculateProportionalSizeOrDistance1(10), height+calculateProportionalSizeOrDistance1(10), SCREEN_WIDTH/2-width/2-calculateProportionalSizeOrDistance1(5),SCREEN_HEIGHT/2-height/2-calculateProportionalSizeOrDistance1(5), borderColor);
 	drawRectangleToScreen(width, height, SCREEN_WIDTH/2-width/2,SCREEN_HEIGHT/2-height/2, filling);
 	drawError(errorMessage, textColor);
 	itsStoppedBecauseOfAnError=0;
@@ -60,7 +61,7 @@ int letterExistsInGameList(char *letter, char* letters) {
 void showLetter(struct Rom *rom) {
 	int rectangleHeight = 80;
 	int rectangleX = (SCREEN_WIDTH/2);
-	int rectangleY = (SCREEN_HEIGHT/2)+calculateProportionalSizeOrDistance(3);
+	int rectangleY = (SCREEN_HEIGHT/2)+calculateProportionalSizeOrDistance1(3);
 	int filling[3];
 	filling[0]=CURRENT_SECTION.fullScreenMenuBackgroundColor[0];
 	filling[1]=CURRENT_SECTION.fullScreenMenuBackgroundColor[1];
@@ -73,9 +74,9 @@ void showLetter(struct Rom *rom) {
 		textColor[0]=255;
 		textColor[1]=255;
 		textColor[2]=255;
-		rectangleHeight=calculateProportionalSizeOrDistance(20);
+		rectangleHeight=calculateProportionalSizeOrDistance1(20);
 		rectangleX = 0;
-		rectangleY = calculateProportionalSizeOrDistance(220);
+		rectangleY = calculateProportionalSizeOrDistance1(220);
 	}
 	filling[0] = CURRENT_SECTION.fullScreenMenuBackgroundColor[0];
 	filling[1] = CURRENT_SECTION.fullScreenMenuBackgroundColor[1];
@@ -83,9 +84,9 @@ void showLetter(struct Rom *rom) {
 	textColor[0]=CURRENT_SECTION.fullscreenMenuItemsColor[0];
 	textColor[1]=CURRENT_SECTION.fullscreenMenuItemsColor[0];
 	textColor[2]=CURRENT_SECTION.fullscreenMenuItemsColor[0];
-	rectangleHeight=calculateProportionalSizeOrDistance(21);
+	rectangleHeight=calculateProportionalSizeOrDistance1(19);
 	rectangleX = 0;
-	rectangleY = calculateProportionalSizeOrDistance(219);
+	rectangleY = calculateProportionalSizeOrDistance1(222);
 	if (!fullscreenMode) {
 		drawRectangleToScreen(SCREEN_WIDTH, rectangleHeight, rectangleX, rectangleY, filling);
 		drawTransparentRectangleToScreen(SCREEN_WIDTH, rectangleHeight, rectangleX, rectangleY, (int[]){0,0,0},255);
@@ -105,7 +106,7 @@ void showLetter(struct Rom *rom) {
 		currentGameFirstLetter[0]='#';
 	}
 	int x = 0;
-	int y = calculateProportionalSizeOrDistance(231);
+	int y = calculateProportionalSizeOrDistance1(231);
 	for (int i=0;i<27;i++) {
 		if (!letterExistsInGameList(letters[i], existingLetters)) {
 			textColor[0]=40;
@@ -122,54 +123,54 @@ void showLetter(struct Rom *rom) {
 			textColor[2]=0;
 		}
 		if (strcmp(letters[i],"N")==0) {
-			x+=calculateProportionalSizeOrDistance(14);
+			x+=calculateProportionalSizeOrDistance1(14);
 		} else if (strcmp(letters[i],"A")==0) {
-			x+=calculateProportionalSizeOrDistance(13);
+			x+=calculateProportionalSizeOrDistance1(13);
 		} else if (strcmp(letters[i],"B")==0) {
-			x+=calculateProportionalSizeOrDistance(12);
+			x+=calculateProportionalSizeOrDistance1(12);
 		} else if (strcmp(letters[i],"C")==0) {
-			x+=calculateProportionalSizeOrDistance(11);
+			x+=calculateProportionalSizeOrDistance1(11);
 		} else if (strcmp(letters[i],"D")==0) {
-			x+=calculateProportionalSizeOrDistance(11);
+			x+=calculateProportionalSizeOrDistance1(11);
 		} else if (strcmp(letters[i],"F")==0) {
-			x+=calculateProportionalSizeOrDistance(10);
+			x+=calculateProportionalSizeOrDistance1(10);
 		} else if (strcmp(letters[i],"G")==0) {
-			x+=calculateProportionalSizeOrDistance(10);
+			x+=calculateProportionalSizeOrDistance1(10);
 		} else if (strcmp(letters[i],"H")==0) {
-			x+=calculateProportionalSizeOrDistance(12);
+			x+=calculateProportionalSizeOrDistance1(12);
 		} else if (strcmp(letters[i],"I")==0) {
-			x+=calculateProportionalSizeOrDistance(10);
+			x+=calculateProportionalSizeOrDistance1(10);
 		} else if (strcmp(letters[i],"J")==0) {
-			x+=calculateProportionalSizeOrDistance(8);
+			x+=calculateProportionalSizeOrDistance1(8);
 		} else if (strcmp(letters[i],"K")==0) {
-			x+=calculateProportionalSizeOrDistance(12);
+			x+=calculateProportionalSizeOrDistance1(12);
 		} else if (strcmp(letters[i],"M")==0) {
-			x+=calculateProportionalSizeOrDistance(13);
+			x+=calculateProportionalSizeOrDistance1(13);
 		} else if (strcmp(letters[i],"O")==0) {
-			x+=calculateProportionalSizeOrDistance(12);
+			x+=calculateProportionalSizeOrDistance1(12);
 		} else if (strcmp(letters[i],"P")==0) {
-			x+=calculateProportionalSizeOrDistance(12);
+			x+=calculateProportionalSizeOrDistance1(12);
 		} else if (strcmp(letters[i],"Q")==0) {
-			x+=calculateProportionalSizeOrDistance(12);
+			x+=calculateProportionalSizeOrDistance1(12);
 		} else if (strcmp(letters[i],"R")==0) {
-			x+=calculateProportionalSizeOrDistance(12);
+			x+=calculateProportionalSizeOrDistance1(12);
 		} else if (strcmp(letters[i],"S")==0) {
-			x+=calculateProportionalSizeOrDistance(12);
+			x+=calculateProportionalSizeOrDistance1(12);
 		} else if (strcmp(letters[i],"V")==0) {
-			x+=calculateProportionalSizeOrDistance(12);
+			x+=calculateProportionalSizeOrDistance1(12);
 		} else if (strcmp(letters[i],"W")==0) {
-			x+=calculateProportionalSizeOrDistance(13);
+			x+=calculateProportionalSizeOrDistance1(13);
 		} else if (strcmp(letters[i],"X")==0) {
-			x+=calculateProportionalSizeOrDistance(14);
+			x+=calculateProportionalSizeOrDistance1(14);
 		} else if (strcmp(letters[i],"Y")==0) {
-			x+=calculateProportionalSizeOrDistance(11);
+			x+=calculateProportionalSizeOrDistance1(11);
 		} else if (strcmp(letters[i],"Z")==0) {
-			x+=calculateProportionalSizeOrDistance(12);
+			x+=calculateProportionalSizeOrDistance1(12);
 		} else {
-			x+=calculateProportionalSizeOrDistance(11);
+			x+=calculateProportionalSizeOrDistance1(11);
 		}
-		if(!is43()&&x>calculateProportionalSizeOrDistance(14)) {
-			x+=calculateProportionalSizeOrDistance(4);
+		if(!is43()&&x>calculateProportionalSizeOrDistance1(14)) {
+			x+=calculateProportionalSizeOrDistance1(4);
 		}
 		drawCurrentLetter(letters[i], textColor, x, y);
 	}
@@ -179,19 +180,23 @@ void showLetter(struct Rom *rom) {
 
 
 void showCurrentGroup() {
-	int height = SCREEN_HEIGHT;
 	int backgroundColor[3];
-	backgroundColor[0]=30;
-	backgroundColor[1]=30;
-	backgroundColor[2]=130;
+	backgroundColor[0]=50;
+	backgroundColor[1]=50;
+	backgroundColor[2]=50;
 	int textColor[3]= {255, 255, 255};
 	char *tempString = malloc(strlen(sectionGroups[activeGroup].groupName)+1);
 	strcpy(tempString,sectionGroups[activeGroup].groupName);
 	strcat(tempString,"\0");
-	drawRectangleToScreen(calculateProportionalSizeOrDistance(SCREEN_WIDTH), calculateProportionalSizeOrDistance(height), 0, 0, backgroundColor);
-	displayCenteredSurface(sectionGroups[activeGroup].groupBackgroundSurface);
-	if (displaySectionGroupName) {
-		drawTransparentRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance(70), 0, SCREEN_HEIGHT/2-calculateProportionalSizeOrDistance(38), backgroundColor, 50);
+
+	drawRectangleToScreen(SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, backgroundColor);
+
+	if (sectionGroups[activeGroup].groupBackgroundSurface!=NULL) {
+		displaySurface(sectionGroups[activeGroup].groupBackgroundSurface, 0, 0);
+	}
+
+	if (displaySectionGroupName || sectionGroups[activeGroup].groupBackgroundSurface==NULL) {
+		drawTransparentRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance1(70), 0, SCREEN_HEIGHT/2-calculateProportionalSizeOrDistance1(38), (int[]){0,0,0}, 50);
 		drawCurrentSectionGroup(tempString, textColor);
 	}
 	free(tempString);
@@ -204,7 +209,7 @@ void showRomPreferences() {
 	textColor[1]=90;
 	textColor[2]=90;
 	int valueColor[3] = {0,147,131};
-
+	int problematicGray[3] = {219,219,219};
 	int textWidth;
 
 	char *emuName = malloc(strlen(CURRENT_SECTION.executables[CURRENT_SECTION.currentGameNode->data->preferences.emulator])+1);
@@ -214,11 +219,11 @@ void showRomPreferences() {
 	char *frequency = malloc(10);
 	snprintf(frequency, 10, "%d", CURRENT_SECTION.currentGameNode->data->preferences.frequency);
 
-	int width=calculateProportionalSizeOrDistance(315);
-	int height = calculateProportionalSizeOrDistance(72);
+	int width=calculateProportionalSizeOrDistance1(315);
+	int height = calculateProportionalSizeOrDistance1(72);
 
 	//Main rectangle
-	drawRectangleToScreen(width+calculateProportionalSizeOrDistance(4), height+calculateProportionalSizeOrDistance(4), SCREEN_WIDTH/2-(width/2+calculateProportionalSizeOrDistance(2)), SCREEN_HEIGHT/2-(height/2+calculateProportionalSizeOrDistance(2)), (int[]) {37,50,56});
+	drawRectangleToScreen(width+calculateProportionalSizeOrDistance1(4), height+calculateProportionalSizeOrDistance1(4), SCREEN_WIDTH/2-(width/2+calculateProportionalSizeOrDistance1(2)), SCREEN_HEIGHT/2-(height/2+calculateProportionalSizeOrDistance1(2)), (int[]) {37,50,56});
 
 	//Overlay
 	drawRectangleToScreen(width, height, SCREEN_WIDTH/2-width/2, SCREEN_HEIGHT/2-height/2, (int[]) {250,250,250});
@@ -228,51 +233,57 @@ void showRomPreferences() {
 
 	//Selection
 	if (chosenChoosingOption==0) {
-		drawRectangleToScreen(width, height/4, SCREEN_WIDTH/2-width/2,SCREEN_HEIGHT/2-height/4, (int[]){219,219,219});
+		drawRectangleToScreen(width, height/4, SCREEN_WIDTH/2-width/2,SCREEN_HEIGHT/2-height/4, problematicGray);
 	} else if (chosenChoosingOption==1) {
-		drawRectangleToScreen(width, height/4, SCREEN_WIDTH/2-width/2,SCREEN_HEIGHT/2, (int[]){219,219,219});
+		drawRectangleToScreen(width, height/4, SCREEN_WIDTH/2-width/2,SCREEN_HEIGHT/2, problematicGray);
 	} else {
-		drawRectangleToScreen(width, height/4, SCREEN_WIDTH/2-width/2,SCREEN_HEIGHT/2+height/4, (int[]){219,219,219});
+		drawRectangleToScreen(width, height/4, SCREEN_WIDTH/2-width/2,SCREEN_HEIGHT/2+height/4, problematicGray);
 	}
 
 	//Name
 	char * name = getNameWithoutPath(CURRENT_SECTION.currentGameNode->data->name);
-	drawTextOnScreen(getFont(), NULL, calculateProportionalSizeOrDistance(6), (SCREEN_HEIGHT/2)-calculateProportionalSizeOrDistance(28), name, (int[]) {255,255,255}, VAlignMiddle | HAlignLeft);
+	drawTextOnScreen(getFont(), NULL, calculateProportionalSizeOrDistance1(6), (SCREEN_HEIGHT/2)-calculateProportionalSizeOrDistance1(28), name, (int[]) {255,255,255}, VAlignMiddle | HAlignLeft);
 	free(name);
 
-	TTF_SizeText(getFont(), (const char *) "Overclock: " , &textWidth, NULL);
-	textWidth+=calculateProportionalSizeOrDistance(2);
+    TTF_SizeText(getFont(), (const char *) "超频: " , &textWidth, NULL);
+	textWidth+=calculateProportionalSizeOrDistance1(2);
 
 	//Frequency option text
-	drawTextOnScreen(getFont(), NULL, (SCREEN_WIDTH/2)-width/2+calculateProportionalSizeOrDistance(4), (SCREEN_HEIGHT/2)-calculateProportionalSizeOrDistance(9), "Overclock: ", textColor, VAlignMiddle | HAlignLeft);
+	drawTextOnScreen(getFont(), NULL, (SCREEN_WIDTH/2)-width/2+calculateProportionalSizeOrDistance1(4), (SCREEN_HEIGHT/2)-calculateProportionalSizeOrDistance1(9), "超频: ", textColor, VAlignMiddle | HAlignLeft);
 	//Frequency option value
 #if defined TARGET_OD_BETA || defined TARGET_RFW || defined TARGET_BITTBOY
-	if (CURRENT_SECTION.currentGameNode->data->preferences.frequency==OC_OC) {
-		drawTextOnScreen(getFont(), NULL, (SCREEN_WIDTH/2)-width/2+textWidth+1, (SCREEN_HEIGHT/2)-calculateProportionalSizeOrDistance(9), "yes", valueColor, VAlignMiddle | HAlignLeft);
-	} else {
-		drawTextOnScreen(getFont(), NULL, (SCREEN_WIDTH/2)-width/2+textWidth+1, (SCREEN_HEIGHT/2)-calculateProportionalSizeOrDistance(9), "no", valueColor, VAlignMiddle | HAlignLeft);
-	}
+    if (overclockEnabled) {
+        if (CURRENT_SECTION.currentGameNode->data->preferences.frequency==OC_OC) {
+		    drawTextOnScreen(getFont(), NULL, (SCREEN_WIDTH/2)-width/2+textWidth+1, (SCREEN_HEIGHT/2)-calculateProportionalSizeOrDistance1(9), "是", valueColor, VAlignMiddle | HAlignLeft);
+	    } else {
+		    drawTextOnScreen(getFont(), NULL, (SCREEN_WIDTH/2)-width/2+textWidth+1, (SCREEN_HEIGHT/2)-calculateProportionalSizeOrDistance1(9), "否", valueColor, VAlignMiddle | HAlignLeft);
+	    }
+    } else {
+    	char overclockValue[16];
+    	snprintf(overclockValue,sizeof(overclockValue),"固定%dMHz", OC_OC_HIGH);
+        drawTextOnScreen(getFont(), NULL, (SCREEN_WIDTH/2)-width/2+textWidth, (SCREEN_HEIGHT/2)-calculateProportionalSizeOrDistance1(9), overclockValue, valueColor, VAlignMiddle | HAlignLeft);
+    }
 #else
-	drawTextOnScreen(getFont(), NULL, (SCREEN_WIDTH/2)-width/2+textWidth, (SCREEN_HEIGHT/2)-calculateProportionalSizeOrDistance(9), "unavailable", valueColor, VAlignMiddle | HAlignLeft);
+	drawTextOnScreen(getFont(), NULL, (SCREEN_WIDTH/2)-width/2+textWidth, (SCREEN_HEIGHT/2)-calculateProportionalSizeOrDistance1(9), "不可用", valueColor, VAlignMiddle | HAlignLeft);
 #endif
 
-	drawRectangleToScreen(width, calculateProportionalSizeOrDistance(1), SCREEN_WIDTH/2-width/2,SCREEN_HEIGHT/2, (int[]){219,219,219});
+	drawRectangleToScreen(width, calculateProportionalSizeOrDistance1(1), SCREEN_WIDTH/2-width/2,SCREEN_HEIGHT/2, problematicGray);
 
 	//Launch at boot option text
-	drawTextOnScreen(getFont(), NULL, (SCREEN_WIDTH/2)-width/2+calculateProportionalSizeOrDistance(4), (SCREEN_HEIGHT/2)+calculateProportionalSizeOrDistance(9), "Autostart: ", textColor, VAlignMiddle | HAlignLeft);
+	drawTextOnScreen(getFont(), NULL, (SCREEN_WIDTH/2)-width/2+calculateProportionalSizeOrDistance1(4), (SCREEN_HEIGHT/2)+calculateProportionalSizeOrDistance1(9), "开机启动: ", textColor, VAlignMiddle | HAlignLeft);
 	//Launch at boot option value
 	if (launchAtBoot) {
-		drawTextOnScreen(getFont(), NULL, (SCREEN_WIDTH/2)-width/2+textWidth, (SCREEN_HEIGHT/2)+calculateProportionalSizeOrDistance(9), "yes", valueColor, VAlignMiddle | HAlignLeft);
+		drawTextOnScreen(getFont(), NULL, (SCREEN_WIDTH/2)-width/2+textWidth, (SCREEN_HEIGHT/2)+calculateProportionalSizeOrDistance1(9), "是", valueColor, VAlignMiddle | HAlignLeft);
 	} else {
-		drawTextOnScreen(getFont(), NULL, (SCREEN_WIDTH/2)-width/2+textWidth, (SCREEN_HEIGHT/2)+calculateProportionalSizeOrDistance(9), "no", valueColor, VAlignMiddle | HAlignLeft);
+		drawTextOnScreen(getFont(), NULL, (SCREEN_WIDTH/2)-width/2+textWidth, (SCREEN_HEIGHT/2)+calculateProportionalSizeOrDistance1(9), "否", valueColor, VAlignMiddle | HAlignLeft);
 	}
 
-	drawRectangleToScreen(width, calculateProportionalSizeOrDistance(1), SCREEN_WIDTH/2-width/2,SCREEN_HEIGHT/2+height/4, (int[]){219,219,219});
+	drawRectangleToScreen(width, calculateProportionalSizeOrDistance1(1), SCREEN_WIDTH/2-width/2,SCREEN_HEIGHT/2+height/4, problematicGray);
 
 	//Emulator option text
-	drawTextOnScreen(getFont(), NULL, (SCREEN_WIDTH/2)-width/2+calculateProportionalSizeOrDistance(4), (SCREEN_HEIGHT/2)+calculateProportionalSizeOrDistance(27), "Emulator: ", textColor, VAlignMiddle | HAlignLeft);
+	drawTextOnScreen(getFont(), NULL, (SCREEN_WIDTH/2)-width/2+calculateProportionalSizeOrDistance1(4), (SCREEN_HEIGHT/2)+calculateProportionalSizeOrDistance1(27), "模拟器: ", textColor, VAlignMiddle | HAlignLeft);
 	//Emulator option value
-	drawTextOnScreen(getFont(), NULL, (SCREEN_WIDTH/2)-width/2+textWidth, (SCREEN_HEIGHT/2)+calculateProportionalSizeOrDistance(27), emuName, valueColor, VAlignMiddle | HAlignLeft);
+	drawTextOnScreen(getFont(), NULL, (SCREEN_WIDTH/2)-width/2+textWidth, (SCREEN_HEIGHT/2)+calculateProportionalSizeOrDistance1(27), emuName, valueColor, VAlignMiddle | HAlignLeft);
 
 	free(emuName);
 	free(frequency);
@@ -287,7 +298,7 @@ void showConsole() {
 	backgroundColor[2]=130;
 	drawRectangleToScreen(calculateProportionalSizeOrDistance(SCREEN_WIDTH), calculateProportionalSizeOrDistance(SCREEN_HEIGHT), 0, 0, backgroundColor);
 	if (CURRENT_SECTION.systemLogoSurface!=NULL) {
-		displayCenteredSurface(CURRENT_SECTION.systemLogoSurface);
+		displaySurface(CURRENT_SECTION.systemLogoSurface, 0, 0);
 		char *gameCount=malloc(100);
 //		snprintf(gameCount,100,"%d GAMES AVAILABLE",theSectionHasGames(&CURRENT_SECTION));
 		snprintf(gameCount,100,gameCountText,CURRENT_SECTION.gameCount);
@@ -328,8 +339,8 @@ void displayGamePicture(struct Rom *rom) {
 		originalGameName = favorite.name;
 	} else {
 		if (rom==NULL) {
-			strcpy(pictureWithFullPath, "NO GAMES FOUND");
-			tempGameName=getGameName("NO GAMES FOUND");
+			strcpy(pictureWithFullPath, "没找到游戏");
+			tempGameName=getGameName("没找到游戏");
 			originalGameName = tempGameName;
 		} else {
 			strcpy(pictureWithFullPath, rom->directory);
@@ -457,8 +468,8 @@ void displayGamePictureInMenu(struct Rom *rom) {
 	} else {
 		if (rom==NULL) {
 			logMessage("INFO","displayGamePictureInMenu","No games!");
-			strcpy(pictureWithFullPath, "NO GAMES FOUND");
-			tempGameName=getGameName("NO GAMES FOUND");
+			strcpy(pictureWithFullPath, "没找到游戏");
+			tempGameName=getGameName("没找到游戏");
 			originalGameName = tempGameName;
 		} else {
 			logMessage("INFO","displayGamePictureInMenu","Displaying...");
@@ -532,12 +543,12 @@ void drawTimedShutDownScreen() {
 	char text1[30];
 	char text2[30];
 	if (shutDownEnabled) {
-		snprintf(text,30,"SHUTTING DOWN");
+		snprintf(text,30,"关机");
 	} else {
-		snprintf(text,30,"QUITTING");
+		snprintf(text,30,"退出");
 	}
-	snprintf(text1,30,"IN %d SECONDS",countDown);
-	snprintf(text2,30,"X TO CANCEL");
+	snprintf(text1,30,"倒计时 %d 秒",countDown);
+	snprintf(text2,30,"X 取消");
 	genericDrawTextOnScreen(getBigFont(), NULL, SCREEN_WIDTH/2, SCREEN_HEIGHT/4, text, (int[]){255,255,255}, VAlignMiddle | HAlignCenter, (int[]){0,0,0}, 0);
 
 	genericDrawTextOnScreen(getBigFont(), NULL, SCREEN_WIDTH/2, SCREEN_HEIGHT/2, text1, (int[]){255,255,255}, VAlignMiddle | HAlignCenter, (int[]){0,0,0}, 0);
@@ -549,9 +560,9 @@ void drawShutDownScreen() {
 	int black[] = {0,0,0};
 	drawRectangleToScreen(SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, black);
 	if (selectedShutDownOption==1) {
-		drawBigWhiteText("REBOOTING");
+		drawBigWhiteText("重启");
 	} else {
-		drawBigWhiteText("SHUTTING DOWN");
+		drawBigWhiteText("再见");
 	}
 }
 
@@ -661,6 +672,25 @@ void setupDecorations() {
 	char *gameNumber=malloc(10);
 	snprintf(gameNumber,10,"%d/%d",CURRENT_SECTION.gameCount>0?(CURRENT_SECTION.currentGameInPage+ITEMS_PER_PAGE*CURRENT_SECTION.currentPage)+1:0,CURRENT_SECTION.gameCount);
 	drawCustomGameNumber(gameNumber, calculateProportionalSizeOrDistance(text2X), calculateProportionalSizeOrDistance(text2Y));
+
+    // 获取当前时间
+    time_t now = time(NULL);
+    char timeNowFormat[80];
+    if (now > -1) {
+        // 将时间转换为本地时间结构
+        struct tm *local_time = localtime(&now);
+        // 检查 localtime() 是否成功
+        if (local_time != NULL) {
+            // 增加 8 小时
+            local_time->tm_hour += 8;
+            // 使用 mktime 函数规范化 tm 结构
+            // 这会自动处理小时增加导致的日期变化（如天数、月份、年份的溢出）
+            mktime(local_time);
+            //格式化并显示完整的日期和时间
+            strftime(timeNowFormat, sizeof(timeNowFormat), "%H:%M:%S", local_time);
+            drawTime(timeNowFormat, calculateProportionalSizeOrDistance(text3X), calculateProportionalSizeOrDistance(text3Y));
+        }
+    }
 	free(gameNumber);
 	logMessage("INFO","setupDecorations","Decorations set");
 }
@@ -697,80 +727,82 @@ void setOptionsAndValues (char **options, char **values, char **hints){
 	hints[SHUTDOWN_OPTION]= malloc(100);
 	hints[HELP_OPTION]= malloc(100);
 
-	strcpy(options[TIDY_ROMS_OPTION],"Tidy rom names ");
-	strcpy(options[FULL_SCREEN_FOOTER_OPTION],"Fullscreen rom names ");
-	strcpy(options[FULL_SCREEN_MENU_OPTION],"Fullscreen menu ");
+	strcpy(options[TIDY_ROMS_OPTION],"游戏名称简化 ");
+	strcpy(options[FULL_SCREEN_FOOTER_OPTION],"全屏模式显示名称 ");
+	strcpy(options[FULL_SCREEN_MENU_OPTION],"全屏模式显示列表 ");
 	logMessage("INFO","setOptionsAndValues","Full screen menu option");
 	logMessage("INFO","setOptionsAndValues",options[FULL_SCREEN_MENU_OPTION]);
-	strcpy(options[THEME_OPTION],"Theme ");
-	strcpy(options[SCREEN_TIMEOUT_OPTION],"Screen timeout ");
-	strcpy(options[DEFAULT_OPTION],"Default launcher  ");
+	strcpy(options[THEME_OPTION],"主题 ");
+	strcpy(options[SCREEN_TIMEOUT_OPTION],"熄屏时间 ");
+	strcpy(options[DEFAULT_OPTION],"默认启动");
 	logMessage("INFO","setOptionsAndValues","Default option");
 	logMessage("INFO","setOptionsAndValues",options[DEFAULT_OPTION]);
 	#if defined TARGET_RFW
-	strcpy(options[USB_OPTION],"USB mode");
+	strcpy(options[USB_OPTION],"USB模式");
 	#else
 	strcpy(options[USB_OPTION],"HDMI");
 	#endif
-	strcpy(options[HELP_OPTION],"Help");
+	strcpy(options[HELP_OPTION],"帮助");
 
-	strcpy(options[SHUTDOWN_OPTION],"Session ");
-	strcpy(hints[TIDY_ROMS_OPTION],"CUT DETAILS OUT OF ROM NAMES");
-	strcpy(hints[FULL_SCREEN_FOOTER_OPTION],"DISPLAY THE CURRENT ROM NAME");
-	strcpy(hints[FULL_SCREEN_MENU_OPTION],"DISPLAY A TRANSLUCENT MENU");
+	strcpy(options[SHUTDOWN_OPTION],"操作");
+	strcpy(hints[TIDY_ROMS_OPTION],"游戏名过长截断尾部说明");
+	strcpy(hints[FULL_SCREEN_FOOTER_OPTION],"全屏模式下显示当前游戏名");
+	strcpy(hints[FULL_SCREEN_MENU_OPTION],"全屏模式下显示半透明列表菜单");
 	logMessage("INFO","setOptionsAndValues","Full screen menu hint");
 	logMessage("INFO","setOptionsAndValues",hints[FULL_SCREEN_MENU_OPTION]);
-	strcpy(hints[THEME_OPTION],"LAUNCHER THEME");
-	strcpy(hints[SCREEN_TIMEOUT_OPTION],"SECONDS UNTIL THE SCREEN TURNS OFF");
-	strcpy(hints[DEFAULT_OPTION],"LAUNCH AFTER BOOTING");
+	strcpy(hints[THEME_OPTION],"选择主题");
+	strcpy(hints[SCREEN_TIMEOUT_OPTION],"倒计时多少秒后熄屏");
+	strcpy(hints[DEFAULT_OPTION],"开机后自动启动");
 	logMessage("INFO","setOptionsAndValues","Default option hint");
 	logMessage("INFO","setOptionsAndValues",hints[DEFAULT_OPTION]);
-	strcpy(hints[HELP_OPTION],"HOW TO USE THIS MENU");
+	strcpy(hints[HELP_OPTION],"操作指南");
 
 	#if defined TARGET_RFW
 	strcpy(hints[USB_OPTION],"PRESS A TO ENABLE USB");
+	#elif defined TARGET_OD_BETA
+	strcpy(hints[USB_OPTION],"按 A 重启并开启HDMI");
 	#else
-	strcpy(hints[USB_OPTION],"ENABLE OR DISABLE HDMI");
+	strcpy(hints[USB_OPTION],"开启或关闭HDMI");
 	#endif
-	strcpy(hints[SHUTDOWN_OPTION],"A TO CONFIRM - LEFT/RIGHT TO CHOOSE");
+	strcpy(hints[SHUTDOWN_OPTION],"A 确定 - 左/右 选择");
 	if (shutDownEnabled) {
 		switch (selectedShutDownOption) {
 			case 0:
-				strcpy(values[SHUTDOWN_OPTION],"shutdown");
+				strcpy(values[SHUTDOWN_OPTION],"关机");
 				break;
 			case 1:
-				strcpy(values[SHUTDOWN_OPTION],"reboot");
+				strcpy(values[SHUTDOWN_OPTION],"重启");
 				break;
 		}
 	} else {
 		switch (selectedShutDownOption) {
 			case 0:
-				strcpy(values[SHUTDOWN_OPTION],"quit");
+				strcpy(values[SHUTDOWN_OPTION],"退出");
 				break;
 			case 1:
-				strcpy(values[SHUTDOWN_OPTION],"reboot");
+				strcpy(values[SHUTDOWN_OPTION],"重启");
 				break;
 			case 2:
-				strcpy(values[SHUTDOWN_OPTION],"shutdown");
+				strcpy(values[SHUTDOWN_OPTION],"关机");
 				break;
 		}
 	}
 
 
 	if (stripGames) {
-		strcpy(values[TIDY_ROMS_OPTION],"enabled");
+		strcpy(values[TIDY_ROMS_OPTION],"开启");
 	} else {
-		strcpy(values[TIDY_ROMS_OPTION],"disabled");
+		strcpy(values[TIDY_ROMS_OPTION],"关闭");
 	}
 	if (footerVisibleInFullscreenMode) {
-		strcpy(values[FULL_SCREEN_FOOTER_OPTION],"enabled");
+		strcpy(values[FULL_SCREEN_FOOTER_OPTION],"开启");
 	} else {
-		strcpy(values[FULL_SCREEN_FOOTER_OPTION],"disabled");
+		strcpy(values[FULL_SCREEN_FOOTER_OPTION],"关闭");
 	}
 	if (menuVisibleInFullscreenMode) {
-		strcpy(values[FULL_SCREEN_MENU_OPTION],"enabled");
+		strcpy(values[FULL_SCREEN_MENU_OPTION],"开启");
 	} else {
-		strcpy(values[FULL_SCREEN_MENU_OPTION],"disabled");
+		strcpy(values[FULL_SCREEN_MENU_OPTION],"关闭");
 	}
 	logMessage("INFO","setOptionsAndValues","Full screen menu is...");
 	logMessage("INFO","setOptionsAndValues",values[FULL_SCREEN_MENU_OPTION]);
@@ -780,25 +812,25 @@ void setOptionsAndValues (char **options, char **values, char **hints){
 	if (timeoutValue>0&&hdmiEnabled==0) {
 		sprintf(values[SCREEN_TIMEOUT_OPTION],"%d",timeoutValue);
 	} else {
-		sprintf(values[SCREEN_TIMEOUT_OPTION],"%s","always on");
+		sprintf(values[SCREEN_TIMEOUT_OPTION],"%s","常亮");
 	}
 
 	if (shutDownEnabled) {
-		strcpy(values[DEFAULT_OPTION],"yes");
+		strcpy(values[DEFAULT_OPTION],"是");
 		logMessage("INFO","setOptionsAndValues","Default option value");
 		logMessage("INFO","setOptionsAndValues",values[DEFAULT_OPTION]);
 	} else {
-		strcpy(values[DEFAULT_OPTION],"no");
+		strcpy(values[DEFAULT_OPTION],"否");
 		logMessage("INFO","setOptionsAndValues","Default option value");
 		logMessage("INFO","setOptionsAndValues",values[DEFAULT_OPTION]);
 	}
-	#if defined TARGET_RFW
+	#if defined TARGET_RFW || defined TARGET_OD_BETA
 	strcpy(values[USB_OPTION]," \0");
 	#else
 	if (hdmiChanged==1) {
-		strcpy(values[USB_OPTION],"enabled");
+		strcpy(values[USB_OPTION],"开启");
 	} else {
-		strcpy(values[USB_OPTION],"disabled");
+		strcpy(values[USB_OPTION],"关闭");
 	}
 	#endif
 //	if (autoHideLogos) {
@@ -824,16 +856,38 @@ void drawBatteryMeter() {
 	levels[3] = batteryLevel60to80;
 	levels[4] = batteryLevel80to100;
 
-	drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance(4), 0, calculateProportionalSizeOrDistance(42), gray5);
+	drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance1(4), 0, calculateProportionalSizeOrDistance1(42), gray5);
 	int pos = (lastChargeLevel);
 	logMessage("INFO","drawSettingsScreen","Positioning batt 1");
 	if (pos<6) {
 		for (int i=pos-1;i>=0;i--) {
-			drawRectangleToScreen(SCREEN_WIDTH/5, calculateProportionalSizeOrDistance(4), (SCREEN_WIDTH/5)*i, calculateProportionalSizeOrDistance(42), levels[i]);
+			drawRectangleToScreen(SCREEN_WIDTH/5, calculateProportionalSizeOrDistance1(4), (SCREEN_WIDTH/5)*i, calculateProportionalSizeOrDistance1(42), levels[i]);
 		}
 	} else {
-		drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance(4), 0, calculateProportionalSizeOrDistance(42), (int[]){80,80,255});
+		drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance1(4), 0, calculateProportionalSizeOrDistance1(42), (int[]){80,80,255});
 	}
+}
+
+void displayTime() {
+	int headerAndFooterText[3]={255,255,255};
+    char timeNowFormat[80];
+    // 获取当前时间
+    time_t now = time(NULL);
+    if (now > -1) {
+        // 将时间转换为本地时间结构
+        struct tm *local_time = localtime(&now);
+        // 检查 localtime() 是否成功
+        if (local_time != NULL) {
+            // 增加 8 小时
+            local_time->tm_hour += 8;
+            // 使用 mktime 函数规范化 tm 结构
+            // 这会自动处理小时增加导致的日期变化（如天数、月份、年份的溢出）
+            mktime(local_time);
+            //格式化并显示完整的日期和时间
+            strftime(timeNowFormat, sizeof(timeNowFormat), "%H:%M:%S", local_time);
+            drawTextOnFooterRightWithColor(timeNowFormat, headerAndFooterText);
+        }
+    }
 }
 
 void drawSettingsScreen() {
@@ -857,6 +911,7 @@ void drawSettingsScreen() {
 	int bodyText[3]= {90,90,90};
 	int bodyHighlightedText[3]= {0,147,131};
 	int bodyBackground[3]={250,250,250};
+	int problematicGray[3] = {225,225,225};
 
 	char *options[10];
 	char *values[10];
@@ -866,14 +921,14 @@ void drawSettingsScreen() {
 	setOptionsAndValues(options, values, hints);
 
 	logMessage("INFO","drawSettingsScreen","Drawing shit");
-	drawRectangleToScreen(SCREEN_WIDTH, SCREEN_HEIGHT-calculateProportionalSizeOrDistance(22), 0,calculateProportionalSizeOrDistance(22), bodyBackground);
-	drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance(42), 0, 0, headerAndFooterBackground);
-	drawTextOnSettingsHeaderLeftWithColor("SETTINGS",headerAndFooterText);
+	drawRectangleToScreen(SCREEN_WIDTH, SCREEN_HEIGHT-calculateProportionalSizeOrDistance1(22), 0,calculateProportionalSizeOrDistance1(22), bodyBackground);
+	drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance1(42), 0, 0, headerAndFooterBackground);
+	drawTextOnSettingsHeaderLeftWithColor("设置-LITTLEHUI",headerAndFooterText);
 
 	drawBatteryMeter();
 
-	int nextLine = calculateProportionalSizeOrDistance(50);
-	int nextLineText = calculateProportionalSizeOrDistance(50);
+	int nextLine = calculateProportionalSizeOrDistance1(50);
+	int nextLineText = calculateProportionalSizeOrDistance1(45);
 	int selected=0;
 	#if defined TARGET_RFW
 	int max = 9;
@@ -895,16 +950,15 @@ void drawSettingsScreen() {
 			logMessage("INFO","drawSettingsScreen","Chosen setting");
 			logMessage("INFO","drawSettingsScreen",options[i]);
 			logMessage("INFO","drawSettingsScreen",values[i]);
-			int lineColor[] = { 219,219,219};
 			if (i==0) {
-				drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance(19), 0, nextLine-calculateProportionalSizeOrDistance(4), lineColor);
+				drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance1(19), 0, nextLine-calculateProportionalSizeOrDistance1(4), problematicGray);
 			} else if (i==max){
-				drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance(21), 0, nextLine-calculateProportionalSizeOrDistance(4), lineColor);
+				drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance1(21), 0, nextLine-calculateProportionalSizeOrDistance1(4), problematicGray);
 			} else {
-				drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance(20), 0, nextLine-calculateProportionalSizeOrDistance(4), lineColor);
+				drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance1(20), 0, nextLine-calculateProportionalSizeOrDistance1(4), problematicGray);
 			}
 			drawNonShadedSettingsOptionOnScreen(options[i], nextLineText, bodyText);
-			drawShadedSettingsOptionValueOnScreen(options[i],values[i], nextLineText, bodyHighlightedText,lineColor);
+            drawNoneShadedSettingsOptionValueOnScreen(options[i], values[i], nextLineText, bodyHighlightedText, problematicGray);
 			selected=i;
 		} else {
 			logMessage("INFO","drawSettingsScreen","Non-Chosen setting");
@@ -916,18 +970,19 @@ void drawSettingsScreen() {
 		int lineColor[] = { 229,229,229};
 		logMessage("INFO","drawSettingsScreen","Drawing rect");
 		if (i<max)  {
-			drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance(1), 0, nextLine+calculateProportionalSizeOrDistance(15), lineColor);
+			drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance1(1), 0, nextLine+calculateProportionalSizeOrDistance1(15), lineColor);
 		}
 		logMessage("INFO","drawSettingsScreen","Next line 1");
-		nextLine+=calculateProportionalSizeOrDistance(19);
+		nextLine+=calculateProportionalSizeOrDistance1(19);
 		logMessage("INFO","drawSettingsScreen","Next line 2");
-		nextLineText+=calculateProportionalSizeOrDistance(19);
+		nextLineText+=calculateProportionalSizeOrDistance1(19);
 		logMessage("INFO","drawSettingsScreen","---");
 	}
 	logMessage("INFO","drawSettingsScreen","Out of the loop");
-	drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance(22), 0, SCREEN_HEIGHT-calculateProportionalSizeOrDistance(22), headerAndFooterBackground);
+	drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance1(22), 0, SCREEN_HEIGHT-calculateProportionalSizeOrDistance1(22), headerAndFooterBackground);
 	logMessage("INFO","drawSettingsScreen","Drawing Footer");
 	drawTextOnSettingsFooterWithColor(hints[selected], bodyBackground);
+	displayTime();
 	logMessage("INFO","drawSettingsScreen","Freeign options");
 	free(options[TIDY_ROMS_OPTION]);
 	free(options[FULL_SCREEN_FOOTER_OPTION]);
@@ -970,16 +1025,14 @@ void drawHelpScreen(int page) {
 	int bodyHighlightedText[3]= {0,147,131};
 	int bodyBackground[3]={250,250,250};
 
-	drawRectangleToScreen(SCREEN_WIDTH, SCREEN_HEIGHT-calculateProportionalSizeOrDistance(22), 0,calculateProportionalSizeOrDistance(22), bodyBackground);
-	drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance(42), 0, 0, headerAndFooterBackground);
-	char temp[300];
-	sprintf(temp,"HELP - %d/2", page);
-	drawTextOnSettingsHeaderLeftWithColor(temp,headerAndFooterText);
+	drawRectangleToScreen(SCREEN_WIDTH, SCREEN_HEIGHT-calculateProportionalSizeOrDistance1(22), 0,calculateProportionalSizeOrDistance1(22), bodyBackground);
+	drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance1(42), 0, 0, headerAndFooterBackground);
+	drawTextOnSettingsHeaderLeftWithColor("帮助-LITTLEHUI",headerAndFooterText);
 
 	drawBatteryMeter();
 
-	int nextLine = calculateProportionalSizeOrDistance(50);
-	int nextLineText = calculateProportionalSizeOrDistance(50);
+	int nextLine = calculateProportionalSizeOrDistance1(50);
+	int nextLineText = calculateProportionalSizeOrDistance1(44);
 	int max = 9;
 	switch (page) {
 		case 1:
@@ -987,19 +1040,19 @@ void drawHelpScreen(int page) {
 				switch (i) {
 					case 0:
 						drawNonShadedSettingsOptionOnScreen("A", nextLineText, bodyText);
-						drawSettingsOptionValueOnScreen("Confirm", nextLineText, bodyHighlightedText);
+						drawSettingsOptionValueOnScreen("确定", nextLineText, bodyHighlightedText);
 						break;
 					case 1:
 						drawNonShadedSettingsOptionOnScreen("B", nextLineText, bodyText);
-						drawSettingsOptionValueOnScreen("Back/Function key", nextLineText, bodyHighlightedText);
+						drawSettingsOptionValueOnScreen("返回/功能键", nextLineText, bodyHighlightedText);
 						break;
 					case 2:
 						drawNonShadedSettingsOptionOnScreen("X", nextLineText, bodyText);
-						drawSettingsOptionValueOnScreen("Mark favorite", nextLineText, bodyHighlightedText);
+						drawSettingsOptionValueOnScreen("添加到收藏夹", nextLineText, bodyHighlightedText);
 						break;
 					case 3:
 						drawNonShadedSettingsOptionOnScreen("Y", nextLineText, bodyText);
-						drawSettingsOptionValueOnScreen("Show/Hide favorites", nextLineText, bodyHighlightedText);
+						drawSettingsOptionValueOnScreen("显示/隐藏收藏夹", nextLineText, bodyHighlightedText);
 						break;
 					case 4:
 						#if defined TARGET_BITTBOY
@@ -1007,31 +1060,31 @@ void drawHelpScreen(int page) {
 						#else
 						drawNonShadedSettingsOptionOnScreen("R1", nextLineText, bodyText);
 						#endif
-						drawSettingsOptionValueOnScreen("Fullscreen mode", nextLineText, bodyHighlightedText);
+						drawSettingsOptionValueOnScreen("全屏预览模式", nextLineText, bodyHighlightedText);
 						break;
 					case 5:
 						drawNonShadedSettingsOptionOnScreen("Select", nextLineText, bodyText);
-						drawSettingsOptionValueOnScreen("Game options", nextLineText, bodyHighlightedText);
+						drawSettingsOptionValueOnScreen("游戏启动选项", nextLineText, bodyHighlightedText);
 						break;
 					case 6:
 						drawNonShadedSettingsOptionOnScreen("Up/Down/Left/Right", nextLineText, bodyText);
-						drawSettingsOptionValueOnScreen("Scroll", nextLineText, bodyHighlightedText);
+						drawSettingsOptionValueOnScreen("滚动", nextLineText, bodyHighlightedText);
 						break;
 					case 7:
 						drawNonShadedSettingsOptionOnScreen("B+Left/Right", nextLineText, bodyText);
-						drawSettingsOptionValueOnScreen("Previous/Next letter", nextLineText, bodyHighlightedText);
+						drawSettingsOptionValueOnScreen("上一字母/下一字母", nextLineText, bodyHighlightedText);
 						break;
 					case 8:
 						drawNonShadedSettingsOptionOnScreen("B+Up/Down", nextLineText, bodyText);
-						drawSettingsOptionValueOnScreen("Quick switch", nextLineText, bodyHighlightedText);
+						drawSettingsOptionValueOnScreen("快速切换", nextLineText, bodyHighlightedText);
 						break;
 				}
 				int lineColor[] = { 229,229,229};
 				if (i<max)  {
-					drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance(1), 0, nextLine+calculateProportionalSizeOrDistance(15), lineColor);
+					drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance1(1), 0, nextLine+calculateProportionalSizeOrDistance1(15), lineColor);
 				}
-				nextLine+=calculateProportionalSizeOrDistance(19);
-				nextLineText+=calculateProportionalSizeOrDistance(19);
+				nextLine+=calculateProportionalSizeOrDistance1(19);
+				nextLineText+=calculateProportionalSizeOrDistance1(19);
 			}
 			break;
 		case 2:
@@ -1039,25 +1092,27 @@ void drawHelpScreen(int page) {
 				switch (i) {
 					case 0:
 						drawNonShadedSettingsOptionOnScreen("B+Select", nextLineText, bodyText);
-						drawSettingsOptionValueOnScreen("Random select", nextLineText, bodyHighlightedText);
+						drawSettingsOptionValueOnScreen("随机选择", nextLineText, bodyHighlightedText);
 						break;
 					case 1:
 						drawNonShadedSettingsOptionOnScreen("B+X", nextLineText, bodyText);
-						drawSettingsOptionValueOnScreen("Delete game", nextLineText, bodyHighlightedText);
+						drawSettingsOptionValueOnScreen("删除游戏", nextLineText, bodyHighlightedText);
 						break;
 				}
 				int lineColor[] = { 229,229,229};
 				if (i<max)  {
-					drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance(1), 0, nextLine+calculateProportionalSizeOrDistance(15), lineColor);
+					drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance1(1), 0, nextLine+calculateProportionalSizeOrDistance1(15), lineColor);
 				}
-				nextLine+=calculateProportionalSizeOrDistance(19);
-				nextLineText+=calculateProportionalSizeOrDistance(19);
+				nextLine+=calculateProportionalSizeOrDistance1(19);
+				nextLineText+=calculateProportionalSizeOrDistance1(19);
 			}
 			break;
 	}
-	drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance(22), 0, SCREEN_HEIGHT-calculateProportionalSizeOrDistance(22), headerAndFooterBackground);
-	drawTextOnSettingsFooterWithColor("PRESS B TO RETURN TO SETTINGS", bodyBackground);
-
+	drawRectangleToScreen(SCREEN_WIDTH, calculateProportionalSizeOrDistance1(22), 0, SCREEN_HEIGHT-calculateProportionalSizeOrDistance1(22), headerAndFooterBackground);
+	char temp[300];
+	sprintf(temp,"页数 %d/2 - 按 B 返回", page);
+	drawTextOnSettingsFooterWithColor(temp, bodyBackground);
+	displayTime();
 }
 
 void updateScreen(struct Node *node) {
@@ -1079,32 +1134,30 @@ void updateScreen(struct Node *node) {
 					}
 				} else {
 					logMessage("INFO","updateScreen","Menu mode");
-					displayCenteredSurface(CURRENT_SECTION.backgroundSurface);
+					displaySurface(CURRENT_SECTION.backgroundSurface, 0, 0);
 					drawGameList();
 					displayGamePictureInMenu(rom);
-					SDL_Surface *battery = NULL;
-					switch (lastChargeLevel) {
-						case 1:
-							battery = IMG_Load(batt1);
-							break;
-						case 2:
-							battery = IMG_Load(batt2);
-							break;
-						case 3:
-							battery = IMG_Load(batt3);
-							break;
-						case 4:
-							battery = IMG_Load(batt4);
-							break;
-						case 5:
-							battery = IMG_Load(batt5);
-							break;
-						default:
-							battery = IMG_Load(battCharging);
-							break;
-					}
-					if (battX>-1 && battery!= NULL) {
-						drawImage(screen, battery, calculateProportionalSizeOrDistance(battX), calculateProportionalSizeOrDistance(battY), 0, 0, calculateProportionalSizeOrDistance(battery->w), calculateProportionalSizeOrDistance(battery->h), 0, 0);
+					if (battX>-1 && surfaceBatt1!= NULL) {
+						switch (lastChargeLevel) {
+							case 1:
+								displaySurface(surfaceBatt1, battX, battY);
+								break;
+							case 2:
+								displaySurface(surfaceBatt2, battX, battY);
+								break;
+							case 3:
+								displaySurface(surfaceBatt3, battX, battY);
+								break;
+							case 4:
+								displaySurface(surfaceBatt4, battX, battY);
+								break;
+							case 5:
+								displaySurface(surfaceBatt5, battX, battY);
+								break;
+							default:
+								displaySurface(surfaceBattCharging, battX, battY);
+								break;
+						}
 					}
 					setupDecorations(rom);
 				}
@@ -1118,7 +1171,7 @@ void updateScreen(struct Node *node) {
 					if(fullscreenMode) {
 						drawRectangleToScreen(SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, (int[]){0,0,0});
 					}
-					generateError("NO GAMES FOUND-FOR THIS SECTION GROUP", 0);
+					generateError("未发现分组游戏！", 0);
 					showErrorMessage(errorMessage);
 				}
 				break;
@@ -1226,10 +1279,10 @@ uint32_t hidePicModeLogo() {
 	if (CURRENT_SECTION.backgroundSurface==NULL) {
 		logMessage("INFO","screen","Loading system background");
 		CURRENT_SECTION.backgroundSurface = IMG_Load(CURRENT_SECTION.background);
-		resizeSectionBackground(&CURRENT_SECTION);
+//		resizeSectionBackground(&CURRENT_SECTION);
 		logMessage("INFO","screen","Loading system picture");
 		CURRENT_SECTION.systemPictureSurface = IMG_Load(CURRENT_SECTION.systemPicture);
-		resizeSectionSystemPicture(&CURRENT_SECTION);
+//		resizeSectionSystemPicture(&CURRENT_SECTION);
 	}
 	currentState=BROWSING_GAME_LIST_AFTER_TIMER;
 	refreshRequest=1;

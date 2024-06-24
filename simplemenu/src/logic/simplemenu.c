@@ -62,7 +62,7 @@ void sig_term_handler()
 	running=0;
 }
 
-void initialSetup() {
+void initialSetup(int w, int h) {
 	initializeGlobals();
 	logMessage("INFO","initialSetup","Initialized Globals");
 	struct sigaction sa;
@@ -79,7 +79,7 @@ void initialSetup() {
 	#endif
 	createConfigFilesInHomeIfTheyDontExist();
 	loadConfig();
-	initializeDisplay();
+	initializeDisplay(w,h);
 	freeFonts();
 	initializeFonts();
 	initializeSettingsFonts();
@@ -122,6 +122,7 @@ void initialSetup2() {
 	determineStartingScreen(sectionCount);
 	enableKeyRepeat();
 	lastChargeLevel=getBatteryLevel();
+	beforeTryingToSwitchGroup = activeGroup;
 }
 
 void processEvents() {
@@ -131,15 +132,18 @@ void processEvents() {
 			if (!isSuspended) {
 				switch (currentState) {
 					case BROWSING_GAME_LIST:
+						previousState=BROWSING_GAME_LIST;
 						performAction(CURRENT_SECTION.currentGameNode);
 						break;
 					case SELECTING_SECTION:
+						previousState=SELECTING_SECTION;
 						performAction(CURRENT_SECTION.currentGameNode);
 						break;
 					case SELECTING_EMULATOR:
 						performChoosingAction();
 						break;
 					case CHOOSING_GROUP:
+						previousState=CHOOSING_GROUP;
 						performGroupChoosingAction();
 						break;
 					case SETTINGS_SCREEN:
@@ -162,10 +166,10 @@ void processEvents() {
 //				updateScreen(CURRENT_SECTION.currentGameNode);
 //				refreshScreen();
 			}
-		} else if (event.type==getKeyUp()) {
-			if (currentState==BROWSING_GAME_LIST &&  previousState != SETTINGS_SCREEN && previousState != SELECTING_EMULATOR ) {
+		} else if (event.type==getKeyUp()&&!alternateControls) {
+			if (currentState==BROWSING_GAME_LIST && previousState != SELECTING_EMULATOR ) {
 				if(((int)event.key.keysym.sym)==BTN_B) {
-					if (!aKeyComboWasPressed&&currentSectionNumber!=favoritesSectionNumber) {
+					if (!aKeyComboWasPressed&&currentSectionNumber!=favoritesSectionNumber&&previousState!=SETTINGS_SCREEN) {
 						currentState=SELECTING_SECTION;
 					}
 					hotKeyPressed=0;
@@ -187,10 +191,10 @@ void processEvents() {
 //						refreshScreen();
 					}
 				}
-			} else 	if (currentState==SELECTING_SECTION) {
+			} else if (currentState==SELECTING_SECTION) {
 				if(((int)event.key.keysym.sym)==BTN_B) {
 					if (aKeyComboWasPressed==0) {
-						if (currentSectionNumber!=favoritesSectionNumber&&sectionGroupCounter>1) {
+						if (currentSectionNumber!=favoritesSectionNumber&&sectionGroupCounter>1&&previousState!=SETTINGS_SCREEN) {
 							beforeTryingToSwitchGroup = activeGroup;
 							currentState=CHOOSING_GROUP;
 						}
@@ -202,44 +206,53 @@ void processEvents() {
 					}
 					if (currentState!=AFTER_RUNNING_LAUNCH_AT_BOOT) {
 						refreshRequest=1;
-//						updateScreen(CURRENT_SECTION.currentGameNode);
-//						refreshScreen();
 					}
 				}
 			}
-			previousState = currentState;
+//			previousState = currentState;
+		} else if (alternateControls&&event.type==getKeyUp()) {
+			printf("Current: %d\n", currentState);
+			printf("Previous: %d\n", previousState);
+			if(((int)event.key.keysym.sym)==BTN_B) {
+				if ((currentState==BROWSING_GAME_LIST || currentState==SELECTING_SECTION)&& previousState != SELECTING_EMULATOR) {
+					if (!aKeyComboWasPressed&&currentSectionNumber!=favoritesSectionNumber&&sectionGroupCounter>1&&previousState!=SETTINGS_SCREEN) {
+						beforeTryingToSwitchGroup = activeGroup;
+						currentState=CHOOSING_GROUP;
+					}
+				}
+				hotKeyPressed=0;
+				if(fullscreenMode) {
+					if(alternateControls&&currentState==SELECTING_SECTION) {
+						hideFullScreenModeMenu();
+					} else if (CURRENT_SECTION.alphabeticalPaging) {
+						resetPicModeHideMenuTimer();
+					}
+				}
+				CURRENT_SECTION.alphabeticalPaging=0;
+				if (aKeyComboWasPressed) {
+					currentState=BROWSING_GAME_LIST;
+				}
+				aKeyComboWasPressed=0;
+				if (currentState!=AFTER_RUNNING_LAUNCH_AT_BOOT) {
+					refreshRequest=1;
+				}
+			}
+//			previousState = currentState;
 		}
-//#if defined (TARGET_BITTBOY)
-//		else if (event.type==getKeyUp()&&currentState==SELECTING_SECTION) {
-//			if(aKeyComboWasPressed==1&&((int)event.key.keysym.sym)==BTN_B) {
-//				hotKeyPressed=0;
-//				CURRENT_SECTION.alphabeticalPaging=0;
-//				aKeyComboWasPressed=0;
-//				currentState=BROWSING_GAME_LIST;
-//				if (currentState!=AFTER_RUNNING_LAUNCH_AT_BOOT) {
-//					updateScreen(CURRENT_SECTION.currentGameNode);
-//					refreshScreen();
-//				}
-//			}
-//		}
-//#endif
-//		else if (event.type==SDL_MOUSEMOTION) {
-			if (currentState==BROWSING_GAME_LIST_AFTER_TIMER) {
-				loadGameList(0);
-				currentState=BROWSING_GAME_LIST;
-			}
-			if (currentState!=AFTER_RUNNING_LAUNCH_AT_BOOT) {
-//				updateScreen(CURRENT_SECTION.currentGameNode);
-//				refreshScreen();
-			}
-//		}
-//		break;
+		if (currentState==BROWSING_GAME_LIST_AFTER_TIMER) {
+			loadGameList(0);
+			currentState=BROWSING_GAME_LIST;
+		}
 	}
 }
 
-int main() {
+int main(int argc, char* argv[]) {
 	logMessage("INFO","main","Setup 1");
-	initialSetup();
+#ifdef TARGET_PC
+	initialSetup(atoi(argv[1]), atoi(argv[2]));
+#else
+	initialSetup(320,240);
+#endif
 	logMessage("INFO","main","Setup 2");
 	initialSetup2();
 	logMessage("INFO","main","Checking launch at boot");
@@ -266,6 +279,7 @@ int main() {
 		start_time=SDL_GetTicks();
 		processEvents();
 		if(refreshRequest) {
+//			printf("YES!!!\n");
 			updateScreen(CURRENT_SECTION.currentGameNode);
 			refreshRequest=0;
 			refreshScreen();

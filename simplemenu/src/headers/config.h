@@ -19,7 +19,9 @@ void setLaunchAtBoot(struct Rom *rom);
 void loadRomPreferences(struct Rom *rom);
 int isLaunchAtBoot(char *romName);
 void setRunningFlag();
+/*
 void loadRomPreferences(struct Rom *rom);
+*/
 int wasRunningFlag();
 void createThemesInHomeIfTheyDontExist();
 #endif

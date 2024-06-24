@@ -1,0 +1,2 @@
+simplemenu/release/英文/SimpleMenu-OD-BETA.opk filter=lfs diff=lfs merge=lfs -text
+simplemenu/release/中文/SimpleMenu-OD-BETA.opk filter=lfs diff=lfs merge=lfs -text
