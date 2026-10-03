@@ -382,7 +382,12 @@ void executeCommand(char *emulatorFolder, char *executable,
 		} else {
 			if (ioctl(fd, VT_ACTIVATE, 1) < 0)
 				printf("Unable to activate tty1\n");
-			close(fd);
+			/* stdout/stderr point at gmenu2x.log; put the console back on tty1. */
+			dup2(fd, 0);
+			dup2(fd, 1);
+			dup2(fd, 2);
+			if (fd > 2)
+				close(fd);
 		}
 #endif
 	}
