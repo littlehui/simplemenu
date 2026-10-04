@@ -98,14 +98,26 @@ void initialSetup(int w, int h) {
 
 void initialSetup2() {
 	char temp[300];
+	if (themeCounter>0 && (activeTheme<0 || activeTheme>=themeCounter)) {
+		logMessage("WARN","initialSetup2","Saved theme is out of range");
+		activeTheme=0;
+	}
 	strcpy(temp,themes[activeTheme]);
 	strcat(temp,"/theme.ini");
 	logMessage("INFO","initialSetup2","Loading theme");
 	loadTheme(temp);
 	logMessage("INFO","initialSetup2","Loading section groups");
 	loadSectionGroups();
+	if (sectionGroupCounter>0 && (activeGroup<0 || activeGroup>=sectionGroupCounter)) {
+		logMessage("WARN","initialSetup2","Saved group is out of range");
+		activeGroup=0;
+	}
 	logMessage("INFO","initialSetup2","Loading sections");
 	int sectionCount=loadSections(sectionGroups[activeGroup].groupPath);
+	if (menuSectionCounter>0 && (currentSectionNumber<0 || currentSectionNumber>=menuSectionCounter)) {
+		logMessage("WARN","initialSetup2","Saved section is out of range");
+		currentSectionNumber=0;
+	}
 	logMessage("INFO","initialSetup2","Loading favorites");
 	loadFavorites();
 	currentMode=3;

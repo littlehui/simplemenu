@@ -1430,8 +1430,14 @@ int countSections(char *file) {
 void saveLastState() {
 	FILE * fp;
 	char pathToStatesFilePlusFileName[300];
+	char pathToStatesTempFile[320];
 	snprintf(pathToStatesFilePlusFileName,sizeof(pathToStatesFilePlusFileName),"%s/.simplemenu/last_state.sav",home);
-	fp = fopen(pathToStatesFilePlusFileName, "w");
+	snprintf(pathToStatesTempFile,sizeof(pathToStatesTempFile),"%s/.simplemenu/last_state.sav.tmp",home);
+	fp = fopen(pathToStatesTempFile, "w");
+	if (fp==NULL) {
+		logMessage("ERROR","saveLastState","Could not write last_state.sav.tmp");
+		return;
+	}
 	fprintf(fp, "%d;\n", 102);
 	fprintf(fp, "%d;\n", stripGames);
 	fprintf(fp, "%d;\n", fullscreenMode);
@@ -1442,9 +1448,12 @@ void saveLastState() {
 	fprintf(fp, "%d;\n", activeGroup);
 	fprintf(fp, "%d;\n", currentSectionNumber);
 	fprintf(fp, "%d;\n", currentMode);
-	for(int groupCount=0;groupCount<sectionGroupCounter;groupCount++) {
+	for(int groupCount=0;groupCount<sectionGroupCounter && groupCount<100;groupCount++) {
 		int sectionsNum=countSections(sectionGroups[groupCount].groupPath);
-		for (int sectionCount=0;sectionCount<=sectionsNum;sectionCount++) {
+		if (sectionsNum>99) {
+			sectionsNum=99;
+		}
+		for (int sectionCount=0;sectionCount<=sectionsNum && sectionCount<100;sectionCount++) {
 			if (groupCount==activeGroup) {
 				int isActive = 0;
 				if (sectionCount==currentSectionNumber) {
@@ -1456,108 +1465,194 @@ void saveLastState() {
 			}
 		}
 	}
+	if (ferror(fp) || fflush(fp)!=0 || fsync(fileno(fp))!=0) {
+		fclose(fp);
+		unlink(pathToStatesTempFile);
+		logMessage("ERROR","saveLastState","Failed while writing last state");
+		return;
+	}
 	fclose(fp);
+	if (rename(pathToStatesTempFile, pathToStatesFilePlusFileName)!=0) {
+		unlink(pathToStatesTempFile);
+		logMessage("ERROR","saveLastState","Could not replace last_state.sav");
+	}
+}
+
+static int readStateFields(const char *line, int *out, int expected) {
+	const char *cursor = line;
+	for (int i=0; i<expected; i++) {
+		char *end = NULL;
+		while (*cursor==' ' || *cursor=='\t') {
+			cursor++;
+		}
+		if (*cursor=='\0' || *cursor=='\n' || *cursor=='\r') {
+			return 0;
+		}
+		long value = strtol(cursor, &end, 10);
+		if (end==cursor) {
+			return 0;
+		}
+		out[i] = (int) value;
+		cursor = end;
+		if (*cursor==';') {
+			cursor++;
+		} else if (i!=expected-1) {
+			return 0;
+		}
+	}
+	while (*cursor==' ' || *cursor=='\t' || *cursor==';' || *cursor=='\n' || *cursor=='\r') {
+		cursor++;
+	}
+	return *cursor=='\0';
+}
+
+static int lastStateHeaderOk(int *header) {
+	if (header[0]!=102) {
+		return 0;
+	}
+	if ((header[1]!=0 && header[1]!=1) || (header[2]!=0 && header[2]!=1) || (header[3]!=0 && header[3]!=1) || (header[4]!=0 && header[4]!=1)) {
+		return 0;
+	}
+	if (header[5]<0 || header[5]>=100) {
+		return 0;
+	}
+	if (header[6]<0 || header[6]>86400) {
+		return 0;
+	}
+	if (header[7]<0 || header[7]>=100 || header[8]<0 || header[8]>=100) {
+		return 0;
+	}
+	if (header[9]<0 || header[9]>10) {
+		return 0;
+	}
+	return 1;
+}
+
+static int lastStateRowOk(int *fields, int groupCounter) {
+	int isActive = fields[0];
+	int sectionNumber = fields[1];
+	int page = fields[2];
+	int game = fields[3];
+	int realCurrentGameNumber = fields[4];
+	int retTo = fields[5];
+	if (groupCounter<0 || groupCounter>=100) {
+		return 0;
+	}
+	if (isActive!=0 && isActive!=1) {
+		return 0;
+	}
+	if (sectionNumber<0 || sectionNumber>=100 || retTo<0 || retTo>=100) {
+		return 0;
+	}
+	if (page<0 || page>100000 || game<0 || game>=100) {
+		return 0;
+	}
+	if (realCurrentGameNumber<0 || realCurrentGameNumber>MAX_GAMES_IN_SECTION) {
+		return 0;
+	}
+	return 1;
+}
+
+static void discardLastStateFile(const char *path) {
+	char badPath[320];
+	snprintf(badPath,sizeof(badPath),"%s.bad",path);
+	unlink(badPath);
+	if (rename(path, badPath)!=0) {
+		unlink(path);
+	}
+	logMessage("WARN","loadLastState","Discarding corrupt last_state.sav");
 }
 
 void loadLastState() {
 	FILE * fp;
 	char * line = NULL;
 	size_t len = 0;
-	ssize_t read;
 	char pathToStatesFilePlusFileName[300];
 	snprintf(pathToStatesFilePlusFileName,sizeof(pathToStatesFilePlusFileName),"%s/.simplemenu/last_state.sav",home);
 
 	fp = fopen(pathToStatesFilePlusFileName, "r");
 	if (fp==NULL) {
-		saveLastState();
 		return;
 	}
-	char *configurations[6];
-	char *ptr;
-	int startInSection = -1;
-	int startInPictureMode = -1;
-	int stripGamesConfig = -1;
-	int startInGroup= -1;
-	int footerVisible= -1;
-	int menuVisible= -1;
-	int themeRead= -1;
-	int timeout= -1;
-	int groupCounter=-1;
-	int savedVersion=-1;
-	int itemsRead=-1;
-	while ((read = getline(&line, &len, fp)) != -1) {
-		ptr = strtok(line, ";");
-		int i=0;
-		while(ptr != NULL) {
-			configurations[i]=ptr;
-			ptr = strtok(NULL, ";");
-			i++;
+	int header[10];
+	int headerCount = 0;
+	int groupCounter = -1;
+	int valid = 1;
+	while (getline(&line, &len, fp) != -1) {
+		if (headerCount<10) {
+			if (!readStateFields(line, &header[headerCount], 1)) {
+				valid = 0;
+				break;
+			}
+			headerCount++;
+			continue;
 		}
-		if (savedVersion==-1) {
-			savedVersion=atoifgl(configurations[0]);
-			if(savedVersion!=102) {
-				saveLastState();
-				fclose(fp);
-				if (line) {
-					free(line);
-				}
-				return;
-			}
-		} else if (stripGamesConfig==-1) {
-			stripGamesConfig=atoifgl(configurations[0]);
-		} else if (startInPictureMode==-1){
-			startInPictureMode=atoifgl(configurations[0]);
-		} else if(footerVisible==-1) {
-			footerVisible=atoifgl(configurations[0]);
-		} else if(menuVisible==-1) {
-			menuVisible=atoifgl(configurations[0]);
-		} else if(themeRead==-1) {
-			themeRead=atoifgl(configurations[0]);
-		} else if(timeout==-1) {
-			timeout=atoifgl(configurations[0]);
-		} else if (startInGroup==-1) {
-			startInGroup = atoifgl(configurations[0]);
-		} else if (startInSection==-1) {
-			startInSection=atoifgl(configurations[0]);
-		} else if (itemsRead==-1) {
-			itemsRead=atoifgl(configurations[0]);
+		int fields[6];
+		if (!readStateFields(line, fields, 6)) {
+			valid = 0;
+			break;
 		}
-		else {
-			if(atoifgl(configurations[1])==0) {
-				groupCounter++;
-			}
-			int isActive =atoifgl(configurations[0]);
-			int sectionNumber =atoifgl(configurations[1]);
-			int page = atoifgl(configurations[2]);
-			int game = atoifgl(configurations[3]);
-			int realCurrentGameNumber = atoifgl(configurations[4]);
-			int retTo = atoifgl(configurations[5]);
-			sectionGroupStates[groupCounter][sectionNumber][0]=isActive;
-			sectionGroupStates[groupCounter][sectionNumber][1]=page;
-			sectionGroupStates[groupCounter][sectionNumber][2]=game;
-			sectionGroupStates[groupCounter][sectionNumber][3]=realCurrentGameNumber;
-			sectionGroupStates[groupCounter][sectionNumber][4]=retTo;
-			if (groupCounter==startInGroup) {
-				menuSections[sectionNumber].currentPage=page;
-				menuSections[sectionNumber].currentGameInPage=game;
-				menuSections[sectionNumber].realCurrentGameNumber=realCurrentGameNumber;
-				returnTo=retTo;
-			}
-			menuSections[sectionNumber].alphabeticalPaging=0;
+		if (fields[1]==0) {
+			groupCounter++;
+		}
+		if (!lastStateRowOk(fields, groupCounter)) {
+			valid = 0;
+			break;
 		}
 	}
-	stripGames=stripGamesConfig;
-	fullscreenMode=startInPictureMode;
-	footerVisibleInFullscreenMode=footerVisible;
-	menuVisibleInFullscreenMode=menuVisible;
-	activeTheme=themeRead;
-	timeoutValue=timeout;
-	currentSectionNumber=startInSection;
-	activeGroup = startInGroup;
-	currentMode=itemsRead;
+	if (!valid || headerCount!=10 || !lastStateHeaderOk(header)) {
+		fclose(fp);
+		if (line) {
+			free(line);
+		}
+		discardLastStateFile(pathToStatesFilePlusFileName);
+		return;
+	}
+	rewind(fp);
+	headerCount = 0;
+	groupCounter = -1;
+	while (getline(&line, &len, fp) != -1) {
+		if (headerCount<10) {
+			headerCount++;
+			continue;
+		}
+		int fields[6];
+		readStateFields(line, fields, 6);
+		if (fields[1]==0) {
+			groupCounter++;
+		}
+		int isActive = fields[0];
+		int sectionNumber = fields[1];
+		int page = fields[2];
+		int game = fields[3];
+		int realCurrentGameNumber = fields[4];
+		int retTo = fields[5];
+		sectionGroupStates[groupCounter][sectionNumber][0]=isActive;
+		sectionGroupStates[groupCounter][sectionNumber][1]=page;
+		sectionGroupStates[groupCounter][sectionNumber][2]=game;
+		sectionGroupStates[groupCounter][sectionNumber][3]=realCurrentGameNumber;
+		sectionGroupStates[groupCounter][sectionNumber][4]=retTo;
+		if (groupCounter==header[7]) {
+			menuSections[sectionNumber].currentPage=page;
+			menuSections[sectionNumber].currentGameInPage=game;
+			menuSections[sectionNumber].realCurrentGameNumber=realCurrentGameNumber;
+			returnTo=retTo;
+		}
+		menuSections[sectionNumber].alphabeticalPaging=0;
+	}
+	stripGames=header[1];
+	fullscreenMode=header[2];
+	footerVisibleInFullscreenMode=header[3];
+	menuVisibleInFullscreenMode=header[4];
+	activeTheme=header[5];
+	timeoutValue=header[6];
+	activeGroup=header[7];
+	currentSectionNumber=header[8];
+	currentMode=header[9];
 	fclose(fp);
 	if (line) {
 		free(line);
 	}
 	logMessage("INFO","loadLastState","Last state loaded");
 }
+
